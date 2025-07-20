@@ -1,123 +1,128 @@
-// app/filesystem/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/client";
 import CreateNodeModal from "@/components/filesystem/create-modal";
 import { AiOutlineFolder, AiOutlineFile } from "react-icons/ai";
-import { redirect } from "next/navigation";
 import { NodeType } from "../../../database.types";
 
+// --- Utility to extract direct child node objects in the schema ---
+function getNodesAtLevel(folder: any): NodeType[] {
+  if (!folder) return [];
+  return Object.keys(folder)
+    .filter((key) => key !== "_data")
+    .map((key) => folder[key]._data);
+}
+
+// --- Utility to traverse to folder at a given path in schema ---
+function getSchemaAtPath(schema: any, path: string): any {
+  if (!path || path === "/") return schema;
+  const parts = path.replace(/^\/|\/$/g, "").split("/");
+  let curr = schema;
+  for (const part of parts) {
+    if (curr && Object.prototype.hasOwnProperty.call(curr, part)) {
+      curr = curr[part];
+    } else {
+      return undefined;
+    }
+  }
+  return curr;
+}
+
+// --- Utility to build nested schema ---
+function buildUserSchema(flatNodes: NodeType[]): any {
+  const schema: any = {};
+  flatNodes.forEach((node) => {
+    const path = node.path;
+    const parts = path.replace(/^\/|\/$/g, "").split("/");
+    let curr = schema;
+    for (const part of parts) {
+      if (!curr[part]) curr[part] = { _data: undefined };
+      curr = curr[part];
+    }
+    curr._data = node;
+  });
+  return schema;
+}
+
 export default function FileSystemPage() {
-  //get url path
-  const params = new URLSearchParams(document.location.search);
-  const urlPath = params.get("path");
-  const urlUser = params.get("user");
+  // get url params
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const urlPath = params?.get("path") || "/";
+  const urlUser = params?.get("user") || "";
 
   const supabase = createClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nodes, setNodes] = useState([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [userSchema, setUserSchema] = useState<any>(null);
+  const [nodes, setNodes] = useState<NodeType[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // --- On mount: auth, redirection, and data fetch ---
   useEffect(() => {
-    // Get current user
-    const getCurrentUser = async () => {
+    const getCurrentUserAndNodes = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        setCurrentUsername(user.user_metadata.display_name);
-        //if user redirected to just /files then send them to their own page
-        if (urlUser == null || urlPath == null) {
-          location.assign(`/files?user=${user.id}&path=/`);
-        } else {
-          fetchNodes(urlUser, urlPath);
-        }
+      if (!user) return;
+
+      setCurrentUserId(user.id);
+      setCurrentUsername(user.user_metadata.display_name);
+
+      // If missing URL params, redirect to correct URL for this user
+      if (!urlUser || !urlPath) {
+        window.location.assign(`/files?user=${user.id}&path=/`);
+        return;
       }
+      // Fetch schema and set nodes for display
+      await fetchAllNodes(urlUser, urlPath);
     };
-    getCurrentUser();
+    getCurrentUserAndNodes();
+    // eslint-disable-next-line
   }, []);
 
-  const fetchNodes = async (userId: string, path: string) => {
-    //fetches ALL nodes branded to the user from the database
-    const { data, error } = await supabase
-      .from("nodes")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    //adds nodes to an array
-    if (!error) {
-      setNodes(data || []);
-    }
-  };
-
-  //get folder using userid and path
-  // const getFolder = async (userId = urlUser, path = urlPath) => {
-  //   const { data, error } = await supabase
-  //     .from("nodes")
-  //     .select("*")
-  //     .eq("user_id", userId)
-  //     .eq("path", path);
-  //   return data;
-  // };
-
-  const createUserSchema = async (userId = urlUser) => {
+  // fetch ALL nodes for this user, build schema, set nodes at (urlPath)
+  const fetchAllNodes = async (userId: string, path: string) => {
+    setLoading(true);
     const { data, error } = await supabase
       .from("nodes")
       .select("*")
       .eq("user_id", userId);
+    if (error) {
+      // handle error here
+      setLoading(false);
+      return;
+    }
+    const schema = buildUserSchema(data || []);
+    setUserSchema(schema);
 
-    const schema: any = {};
-
-    data!.map((node: NodeType) => {
-      const path = node.path;
-      const parts = path.replace(/^\/|\/$/g, "").split("/");
-      let current = schema;
-
-      for (const part of parts) {
-        if (!current[part]) current[part] = { _data: node };
-        current = current[part];
-      }
-    });
-    console.log(schema);
-    return schema;
+    // traverse to folder at path
+    const folderObj = getSchemaAtPath(schema, path);
+    const childNodes = getNodesAtLevel(folderObj);
+    setNodes(childNodes);
+    setLoading(false);
   };
 
+  // When new node is created, re-fetch
   const handleNodeCreated = () => {
-    if (currentUserId) {
-      fetchNodes(currentUserId);
+    if (currentUserId && urlPath) {
+      fetchAllNodes(currentUserId, urlPath);
     }
   };
 
-  //gets the schema for a specific folder
-  async function getFolderSchema(path = urlPath) {
-    const userSchema = await createUserSchema();
-
-    if (path == "/") return userSchema;
-    // Remove leading/trailing slashes and split
-
-    const parts = path!.replace(/^\/|\/$/g, "").split("/");
-    let curr = userSchema;
-    for (const part of parts) {
-      if (curr && curr.hasOwnProperty(part)) {
-        curr = curr[part];
-      } else {
-        return undefined; // Path does not exist
-      }
-    }
-    return curr;
-  }
-
-  getFolderSchema();
-
+  // --- UI render ---
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-100 mb-6">My Files</h1>
+        <h1 className="text-3xl font-bold text-gray-100 mb-6">
+          {currentUsername}
+          {urlPath}
+        </h1>
 
         {/* Files/Folders List */}
         <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-8 gap-4">
@@ -125,7 +130,7 @@ export default function FileSystemPage() {
             <div
               key={node.id}
               className="flex flex-col items-center justify-center bg-slate-900 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
-              style={{ width: 120, minHeight: 120 }} // Adjust size as needed
+              style={{ width: 120, minHeight: 120 }}
             >
               <div className="mb-2 text-6xl text-primary">
                 {node.type === "folder" ? (
@@ -141,7 +146,7 @@ export default function FileSystemPage() {
           ))}
         </div>
 
-        {nodes.length === 0 && (
+        {!loading && nodes.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">
               No files or folders yet. Create your first one!
