@@ -6,7 +6,7 @@ import CreateNodeModal from "@/components/filesystem/create-modal";
 import { AiOutlineFolder, AiOutlineFile } from "react-icons/ai";
 import { NodeType } from "../../../database.types";
 
-// --- Utility to extract direct child node objects in the schema ---
+// --- Util: extract direct child nodes of current folder ---
 function getNodesAtLevel(folder: any): NodeType[] {
   if (!folder) return [];
   return Object.keys(folder)
@@ -14,7 +14,7 @@ function getNodesAtLevel(folder: any): NodeType[] {
     .map((key) => folder[key]._data);
 }
 
-// --- Utility to traverse to folder at a given path in schema ---
+// --- Util: navigate nested object by /path ---
 function getSchemaAtPath(schema: any, path: string): any {
   if (!path || path === "/") return schema;
   const parts = path.replace(/^\/|\/$/g, "").split("/");
@@ -29,12 +29,11 @@ function getSchemaAtPath(schema: any, path: string): any {
   return curr;
 }
 
-// --- Utility to build nested schema ---
+// --- Util: build nested tree from flat array of nodes ---
 function buildUserSchema(flatNodes: NodeType[]): any {
   const schema: any = {};
   flatNodes.forEach((node) => {
-    const path = node.path;
-    const parts = path.replace(/^\/|\/$/g, "").split("/");
+    const parts = node.path.replace(/^\/|\/$/g, "").split("/");
     let curr = schema;
     for (const part of parts) {
       if (!curr[part]) curr[part] = { _data: undefined };
@@ -46,26 +45,35 @@ function buildUserSchema(flatNodes: NodeType[]): any {
 }
 
 export default function FileSystemPage() {
-  // get url params
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
-  const urlPath = params?.get("path") || "/";
-  const urlUser = params?.get("user") || "";
-
-  const supabase = createClient();
-
+  // --- State declarations ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [userSchema, setUserSchema] = useState<any>(null);
   const [nodes, setNodes] = useState<NodeType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [urlUser, setUrlUser] = useState<string>("");
+  const [urlPath, setUrlPath] = useState<string>("/");
 
-  // --- On mount: auth, redirection, and data fetch ---
+  const supabase = createClient();
+
+  // --- Extract URL params on mount (in browser only) ---
   useEffect(() => {
-    const getCurrentUserAndNodes = async () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setUrlUser(params.get("user") || "");
+      setUrlPath(params.get("path") || "/");
+    }
+  }, []);
+
+  // --- On user and path change: fetch current user and schema ---
+  useEffect(() => {
+    // Only proceed if params are available
+    if (!urlUser || !urlPath) return;
+
+    async function init() {
+      setLoading(true);
+      // 1. Get currently logged-in user
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -74,45 +82,40 @@ export default function FileSystemPage() {
       setCurrentUserId(user.id);
       setCurrentUsername(user.user_metadata.display_name);
 
-      // If missing URL params, redirect to correct URL for this user
+      // 2. If params are missing, redirect to user's root
       if (!urlUser || !urlPath) {
         window.location.assign(`/files?user=${user.id}&path=/`);
         return;
       }
-      // Fetch schema and set nodes for display
-      await fetchAllNodes(urlUser, urlPath);
-    };
-    getCurrentUserAndNodes();
-    // eslint-disable-next-line
-  }, []);
 
-  // fetch ALL nodes for this user, build schema, set nodes at (urlPath)
-  const fetchAllNodes = async (userId: string, path: string) => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("nodes")
-      .select("*")
-      .eq("user_id", userId);
-    if (error) {
-      // handle error here
+      // 3. Fetch all user nodes, build schema, get current nodes
+      const { data, error } = await supabase
+        .from("nodes")
+        .select("*")
+        .eq("user_id", urlUser);
+
+      if (error) {
+        setLoading(false);
+        return;
+      }
+
+      const schema = buildUserSchema(data || []);
+      setUserSchema(schema);
+      const folderObj = getSchemaAtPath(schema, urlPath);
+      setNodes(getNodesAtLevel(folderObj));
       setLoading(false);
-      return;
     }
-    const schema = buildUserSchema(data || []);
-    setUserSchema(schema);
 
-    // traverse to folder at path
-    const folderObj = getSchemaAtPath(schema, path);
-    const childNodes = getNodesAtLevel(folderObj);
-    setNodes(childNodes);
-    setLoading(false);
-  };
+    init();
+    // eslint-disable-next-line
+  }, [urlUser, urlPath]);
 
-  // When new node is created, re-fetch
+  // --- Handler: re-fetch data after creating a node ---
   const handleNodeCreated = () => {
-    if (currentUserId && urlPath) {
-      fetchAllNodes(currentUserId, urlPath);
-    }
+    // Just triggers the above useEffect by setting urlUser/urlPath again
+    setLoading(true);
+    setUrlUser((u) => u); // force re-run effect
+    setUrlPath((p) => p);
   };
 
   // --- UI render ---
@@ -120,8 +123,7 @@ export default function FileSystemPage() {
     <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-100 mb-6">
-          {currentUsername}
-          {urlPath}
+          {currentUsername} {urlPath}
         </h1>
 
         {/* Files/Folders List */}
