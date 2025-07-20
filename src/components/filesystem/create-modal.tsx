@@ -9,6 +9,7 @@ interface CreateNodeModalProps {
   onClose: () => void;
   onNodeCreated: () => void;
   userId: string | null;
+  username: string | null;
 }
 
 export default function CreateNodeModal({
@@ -16,12 +17,14 @@ export default function CreateNodeModal({
   onClose,
   onNodeCreated,
   userId,
+  username,
 }: CreateNodeModalProps) {
   const supabase = createClient();
   const [formData, setFormData] = useState({
     name: "",
     type: "folder" as "folder" | "file",
     metadata: {},
+    path: "/",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,17 +40,19 @@ export default function CreateNodeModal({
       const { error } = await supabase.from("nodes").insert([
         {
           user_id: userId,
+          username,
           parent_id: null, // Root level for now
           name: formData.name,
           type: formData.type,
           metadata: formData.metadata,
+          path: formData.path,
         },
       ]);
 
       if (error) throw error;
 
       // Reset form and close modal
-      setFormData({ name: "", type: "folder", metadata: {} });
+      setFormData({ name: "", type: "folder", metadata: {}, path: "/" });
       onNodeCreated();
       onClose();
     } catch (error: any) {
@@ -70,14 +75,11 @@ export default function CreateNodeModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-slate-900 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Create New Item</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <h2 className="text-xl font-bold text-gray-100">Create New Item</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
             <svg
               className="w-6 h-6"
               fill="none"
@@ -99,7 +101,7 @@ export default function CreateNodeModal({
           <div>
             <label
               htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-400 mb-1"
             >
               Name
             </label>
@@ -110,7 +112,26 @@ export default function CreateNodeModal({
               value={formData.name}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter name..."
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="path"
+              className="block text-sm font-medium text-gray-400 mb-1"
+            >
+              Name
+            </label>
+            <input
+              type="path"
+              id="path"
+              name="path"
+              value={formData.path}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter name..."
             />
           </div>
@@ -119,7 +140,7 @@ export default function CreateNodeModal({
           <div>
             <label
               htmlFor="type"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-400 mb-1"
             >
               Type
             </label>
@@ -128,10 +149,14 @@ export default function CreateNodeModal({
               name="type"
               value={formData.type}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="folder">📁 Folder</option>
-              <option value="file">📄 File</option>
+              <option className="bg-slate-900 text-gray-100" value="folder">
+                📁 Folder
+              </option>
+              <option className="bg-slate-900 text-gray-100" value="file">
+                📄 File
+              </option>
             </select>
           </div>
 
@@ -147,7 +172,7 @@ export default function CreateNodeModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-100 bg-transparent rounded-md hover:underline transition-colors"
             >
               Cancel
             </button>
