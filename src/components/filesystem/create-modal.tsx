@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/client";
+import { useEffect } from "react";
 
 interface CreateNodeModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface CreateNodeModalProps {
   onNodeCreated: () => void;
   userId: string | null;
   username: string | null;
+  currentPath: string; // NEW
+  existingFolders: string[]; // NEW
 }
 
 export default function CreateNodeModal({
@@ -18,7 +21,19 @@ export default function CreateNodeModal({
   onNodeCreated,
   userId,
   username,
+  currentPath,
+  existingFolders,
 }: CreateNodeModalProps) {
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        path: currentPath,
+      }));
+    }
+    // eslint-disable-next-line
+  }, [isOpen, currentPath]);
+
   const supabase = createClient();
   const [formData, setFormData] = useState({
     name: "",
@@ -42,10 +57,12 @@ export default function CreateNodeModal({
           user_id: userId,
           username,
           parent_id: null, // Root level for now
-          name: formData.name,
+          name: formData.name.trim(),
           type: formData.type,
           metadata: formData.metadata,
-          path: formData.path,
+          path: `${
+            formData.path == "/" ? "" : formData.path
+          }/${formData.name.trim()}`,
         },
       ]);
 
@@ -122,18 +139,26 @@ export default function CreateNodeModal({
               htmlFor="path"
               className="block text-sm font-medium text-gray-400 mb-1"
             >
-              Name
+              Location
             </label>
-            <input
-              type="path"
+            <select
               id="path"
               name="path"
               value={formData.path}
               onChange={handleInputChange}
               required
               className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter name..."
-            />
+            >
+              {existingFolders.map((folder) => (
+                <option
+                  className="bg-slate-900 text-gray-100"
+                  key={folder}
+                  value={folder}
+                >
+                  {folder}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Type Selection */}
