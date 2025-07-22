@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/client";
 import CreateNodeModal from "@/components/files/create-modal";
-import { AiOutlineFolder, AiOutlineFile } from "react-icons/ai";
+import {
+  AiOutlineFolder,
+  AiOutlineFile,
+  AiFillFolder,
+  AiFillFile,
+} from "react-icons/ai";
 import { NodeType } from "../../../database.types";
 import BreadCrumbs from "@/components/files/breadcrumbs";
+import { FiMoreVertical } from "react-icons/fi";
 
 // --- Util: extract direct child nodes of current folder ---
 function getNodesAtLevel(folder: any): NodeType[] {
@@ -195,7 +201,7 @@ export default function FileSystemPage() {
           {nodes.map((node: NodeType) => (
             <div
               key={node.id}
-              className="flex flex-col items-center justify-center bg-slate-900 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
+              className="-mb-1 flex flex-col items-center justify-center bg-transparent hover:bg-slate-900 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
               style={{ width: 120, minHeight: 120 }}
               onDoubleClick={() => {
                 if (node.type === "folder") {
@@ -215,14 +221,15 @@ export default function FileSystemPage() {
                 }
               }}
             >
-              <div className="mb-2 text-6xl text-primary">
+              <div className=" text-9xl text-primary">
                 {node.type === "folder" ? (
-                  <AiOutlineFolder />
+                  // <AiOutlineFolder />
+                  <AiFillFolder />
                 ) : (
-                  <AiOutlineFile />
+                  <AiFillFile />
                 )}
               </div>
-              <span className="text-sm break-all text-center text-gray-100 mt-1 unselectable">
+              <span className="-mt-1 text-sm break-all text-center text-gray-100 unselectable">
                 {node.name}
               </span>
             </div>
