@@ -42,8 +42,8 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ path, onNavigate }) => {
             aria-current={idx === crumbs.length - 1 ? "page" : undefined}
           >
             {crumb.name}
-            {/* {crumb.path} */}
           </button>
+          {/* slash creator */}
           {idx < crumbs.length - 1 && (
             <span className="text-gray-400 select-none">/</span>
           )}

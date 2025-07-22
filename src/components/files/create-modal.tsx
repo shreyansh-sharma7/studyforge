@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/client";
 import { useEffect } from "react";
+import { NodeType } from "../../../database.types";
 
 interface CreateNodeModalProps {
   isOpen: boolean;
@@ -31,7 +32,6 @@ export default function CreateNodeModal({
         path: currentPath,
       }));
     }
-    // eslint-disable-next-line
   }, [isOpen, currentPath]);
 
   const supabase = createClient();
@@ -52,25 +52,24 @@ export default function CreateNodeModal({
     setError(null);
 
     try {
-      const { error } = await supabase.from("nodes").insert([
-        {
-          user_id: userId,
-          username,
-          parent_id: null, // Root level for now
-          name: formData.name.trim(),
-          type: formData.type,
-          metadata: formData.metadata,
-          path: `${
-            formData.path == "/" ? "" : formData.path
-          }/${formData.name.trim()}`,
-        },
-      ]);
+      const node = {
+        user_id: userId,
+        username,
+        parent_id: null, // Root level for now
+        name: formData.name.trim(),
+        type: formData.type,
+        metadata: formData.metadata,
+        path: `${
+          formData.path == "/" ? "" : formData.path
+        }/${formData.name.trim()}`,
+      };
+      const { error } = await supabase.from("nodes").insert([node]);
 
       if (error) throw error;
 
       // Reset form and close modal
       setFormData({ name: "", type: "folder", metadata: {}, path: "/" });
-      onNodeCreated();
+      onNodeCreated(node.path, node.user_id);
       onClose();
     } catch (error: any) {
       setError(error.message || "Failed to create item");

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/client";
-import CreateNodeModal from "@/components/filesystem/create-modal";
+import CreateNodeModal from "@/components/files/create-modal";
 import { AiOutlineFolder, AiOutlineFile } from "react-icons/ai";
 import { NodeType } from "../../../database.types";
-import BreadCrumbs from "@/components/filesystem/breadcrumbs";
+import BreadCrumbs from "@/components/files/breadcrumbs";
 
 // --- Util: extract direct child nodes of current folder ---
 function getNodesAtLevel(folder: any): NodeType[] {
@@ -31,11 +31,11 @@ function getSchemaAtPath(schema: any, path: string): any {
 }
 
 // --- Util: build nested tree from flat array of nodes ---
-function buildUserSchema(flatNodes: NodeType[]): any {
-  const schema: any = {};
+function buildUserSchema(flatNodes: NodeType[], givenSchema = {}): any {
+  const schema = JSON.parse(JSON.stringify(givenSchema));
   flatNodes.forEach((node) => {
     const parts = node.path.replace(/^\/|\/$/g, "").split("/");
-    let curr = schema;
+    let curr: any = schema;
     for (const part of parts) {
       if (!curr[part]) curr[part] = { _data: undefined };
       curr = curr[part];
@@ -86,6 +86,28 @@ export default function FileSystemPage() {
     window.history.pushState({}, "", `?${params.toString()}`);
   };
 
+  // returns [node with the EXACT path so only returns one item]
+  const getNodeFromPath = async (path: string, userId = currentUserId) => {
+    const { data, error } = await supabase
+      .from("nodes")
+      .select("*")
+      .eq("path", path)
+      .eq("user_id", userId);
+    if (!error) return data;
+    else return error;
+  };
+
+  // returns [nodes inside a specified path returns multiple]
+  const getNodesFromPath = async (path: string, userId = currentUserId) => {
+    const { data, error } = await supabase
+      .from("nodes")
+      .select("*")
+      .like("path", `${path}%`)
+      .eq("user_id", userId);
+    if (!error) return data;
+    else return error;
+  };
+
   // --- Extract URL params on mount (in browser only) ---
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -112,28 +134,26 @@ export default function FileSystemPage() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          window.location.replace(`/auth/login`);
+          return;
+        }
         window.location.replace(`/files?user=${user.id}&path=/`); // replace (not assign) avoids one extra history entry
         return; // DO NOT proceed!
       }
 
-      // 2. Set your states from the REAL url (if you must), then load data
+      // Set your states from the REAL url then load data
       setCurrentUserId(realUser);
-      // setUrlUser(realUser);
+      setUrlUser(realUser);
       setUrlPath(realPath);
 
-      // 3. Fetch data as normal (using realUser/realPath)
-      const { data, error } = await supabase
-        .from("nodes")
-        .select("*")
-        .eq("user_id", realUser);
+      // Fetch data
+      const data = await getNodesFromPath("/", realUser);
 
-      if (error) {
-        setLoading(false);
-        return;
-      }
       const schema = buildUserSchema(data || []);
       setUserSchema(schema);
+
+      //Display Data
       const folderObj = getSchemaAtPath(schema, realPath);
       setNodes(getNodesAtLevel(folderObj));
       setLoading(false);
@@ -144,14 +164,19 @@ export default function FileSystemPage() {
   }, [urlPath, urlUser]); // Optionally remove urlUser, urlPath from dependencies if you're only using the real ones each time
 
   // --- Handler: re-fetch data after creating a node ---
-  const handleNodeCreated = () => {
-    // Just triggers the above useEffect by setting urlUser/urlPath again
+  const handleNodeCreated = async (path: string, userId: string) => {
     setLoading(true);
 
-    //temporary solution please have a better system for this
-    location.reload();
-    // setUrlUser((u) => u); // force re-run effect
-    // setUrlPath((p) => p);
+    const nodeList: NodeType[] = await getNodeFromPath(path, userId);
+
+    const schemaUpdated = buildUserSchema(nodeList, userSchema);
+    setUserSchema(schemaUpdated);
+
+    //display the new schema
+    const folderObj = getSchemaAtPath(schemaUpdated, urlPath);
+    setNodes(getNodesAtLevel(folderObj));
+
+    setLoading(false);
   };
 
   // --- UI render ---
@@ -239,7 +264,9 @@ export default function FileSystemPage() {
       <CreateNodeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onNodeCreated={handleNodeCreated}
+        onNodeCreated={(path: string, userId: string) => {
+          handleNodeCreated(path, userId);
+        }}
         userId={currentUserId}
         username={currentUsername}
         currentPath={urlPath}
