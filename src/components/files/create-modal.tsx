@@ -203,7 +203,7 @@ export default function CreateNodeModal({
             <button
               type="submit"
               disabled={loading || !formData.name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Creating..." : "Create"}
             </button>
