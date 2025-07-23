@@ -3,13 +3,21 @@ import { AiFillFolder, AiFillFile } from "react-icons/ai";
 import { FiMoreVertical } from "react-icons/fi";
 import { NodeType } from "../../../database.types";
 
+import { deleteNode, updateNode } from "@/lib/files/file-actions";
+
 interface NodeCardProps {
   node: NodeType;
   urlPath: string;
   setUrlPath: (path: string) => void;
+  onNodeUpdate: (path: string, userId: string, del?: boolean) => {};
 }
 
-const NodeCard: React.FC<NodeCardProps> = ({ node, urlPath, setUrlPath }) => {
+const NodeCard: React.FC<NodeCardProps> = ({
+  node,
+  urlPath,
+  setUrlPath,
+  onNodeUpdate,
+}) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = (e: React.MouseEvent) => {
@@ -65,20 +73,22 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, urlPath, setUrlPath }) => {
         >
           <button
             className="block w-full text-left px-3 py-2 hover:bg-neutral-700"
-            onClick={() => {
+            onClick={async () => {
               setMenuOpen(false);
-              // TODO: Add your delete handler here
-              console.log("Delete clicked for", node.name);
+              await deleteNode(node);
+              onNodeUpdate(node.path, node.user_id!, true);
             }}
           >
             Delete
           </button>
           <button
             className="block w-full text-left px-3 py-2 hover:bg-neutral-700"
-            onClick={() => {
+            onClick={async () => {
               setMenuOpen(false);
-              // TODO: Add your rename handler here
-              console.log("Rename clicked for", node.name);
+              node.name = "gang";
+              node.path = "/gang/";
+              await updateNode(node);
+              // onNodeUpdate(node.path, node.user_id!, true);
             }}
           >
             Rename
@@ -88,7 +98,7 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, urlPath, setUrlPath }) => {
       )}
 
       {/* Icon */}
-      <div className="text-9xl text-primary pointer-events-none">
+      <div className="text-9xl text-primary-400 pointer-events-none">
         {node.type === "folder" ? <AiFillFolder /> : <AiFillFile />}
       </div>
 

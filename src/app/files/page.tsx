@@ -156,16 +156,36 @@ const FileSystemPage = () => {
   }, [urlPath, urlUser]);
 
   // On created node, refresh schema and UI
-  const handleNodeCreated = async (path: string, userId: string) => {
+  //when updateAll=true then refreshes the whole userschema else just adds the node
+  // also handles deletes
+  const handleNodeUpdate = async (
+    path: string,
+    userId: string,
+    updateAll = false
+  ) => {
     setLoading(true);
-    const nodeList: NodeType[] = await getNodeFromPath(path, userId);
-    const schemaUpdated = buildUserSchema(nodeList, userSchema);
+    const nodeList: NodeType[] = !updateAll
+      ? await getNodeFromPath(path, userId)
+      : await getNodesFromPath(urlPath, urlUser);
+
+    console.log(nodeList, !updateAll ? userSchema : {});
+    const schemaUpdated = buildUserSchema(
+      nodeList,
+      !updateAll ? userSchema : {}
+    );
+
     setUserSchema(schemaUpdated);
 
     const folderObj = getSchemaAtPath(schemaUpdated, urlPath);
     setNodes(getNodesAtLevel(folderObj));
     setLoading(false);
   };
+
+  // const fullReload = async (path: string, userId: string) => {
+  //   const nodeList: NodeType[] = await getNodesFromPath(path, userId);
+  //   const schemaUpdated = buildUserSchema(nodeList, {});
+  //   setUserSchema(schemaUpdated);
+  // };
 
   return (
     <div className="min-h-screen p-6">
@@ -182,6 +202,7 @@ const FileSystemPage = () => {
               node={node}
               urlPath={urlPath}
               setUrlPath={setUrlPath}
+              onNodeUpdate={handleNodeUpdate}
             />
           ))}
         </div>
@@ -198,7 +219,7 @@ const FileSystemPage = () => {
       {/* Floating Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-6 right-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
+        className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
       >
         <svg
           className="w-6 h-6"
@@ -219,7 +240,7 @@ const FileSystemPage = () => {
       <CreateNodeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onNodeCreated={handleNodeCreated}
+        onNodeCreated={handleNodeUpdate}
         userId={currentUserId}
         username={currentUsername}
         currentPath={urlPath}

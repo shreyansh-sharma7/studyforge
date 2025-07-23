@@ -1,9 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,100..900;1,100..900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
-
+@import "./colors.css";
 
 @custom-variant dark (&:is(.dark *));
+
+
 
 /* light mode */
 
@@ -11,7 +13,6 @@
   --color-background1: var(--background);
   --color-background2: #151e1e
   --color-foreground: var(--foreground);
-  --color-primary: hsla(153, 60%, 53%, 1);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);

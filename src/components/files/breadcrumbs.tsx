@@ -36,7 +36,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ path, onNavigate }) => {
               className={`cursor-pointer text-2xl px-2 py-1 focus:outline-none saira-regular
               ${
                 idx === crumbs.length - 1
-                  ? "font-bold text-emerald-400 cursor-default"
+                  ? "font-bold text-primary-400 cursor-default bg-"
                   : "text-gray-300 hover:underline transition-colors"
               }
             `}

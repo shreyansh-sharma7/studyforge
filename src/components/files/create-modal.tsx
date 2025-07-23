@@ -9,7 +9,7 @@ import { NodeType } from "../../../database.types";
 interface CreateNodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onNodeCreated: () => void;
+  onNodeCreated: (path: string, user_id: string, updateAll?: boolean) => void;
   userId: string | null;
   username: string | null;
   currentPath: string; // NEW
@@ -61,7 +61,7 @@ export default function CreateNodeModal({
         metadata: formData.metadata,
         path: `${
           formData.path == "/" ? "" : formData.path
-        }/${formData.name.trim()}`,
+        }/${formData.name.trim()}/`,
       };
       const { error } = await supabase.from("nodes").insert([node]);
 
