@@ -26,7 +26,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ path, onNavigate }) => {
 
   return (
     <nav className="flex items-center gap-2 mb-4" aria-label="Breadcrumb">
-      <div className="flex items-center bg-slate-900 rounded-md">
+      <div className="flex items-center bg-neutral-900 rounded-md">
         {crumbs.map((crumb, idx) => (
           <span key={crumb.path} className=" flex items-center">
             <button

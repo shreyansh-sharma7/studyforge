@@ -1,28 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/client";
 import CreateNodeModal from "@/components/files/create-modal";
-import {
-  AiOutlineFolder,
-  AiOutlineFile,
-  AiFillFolder,
-  AiFillFile,
-} from "react-icons/ai";
-import { NodeType } from "../../../database.types";
 import BreadCrumbs from "@/components/files/breadcrumbs";
-import { FiMoreVertical } from "react-icons/fi";
+import NodeCard from "@/components/files/nodecard";
+import { NodeType } from "../../../database.types";
 
-// --- Util: extract direct child nodes of current folder ---
-function getNodesAtLevel(folder: any): NodeType[] {
+// --- Utilities ---
+
+const getNodesAtLevel = (folder: any): NodeType[] => {
   if (!folder) return [];
   return Object.keys(folder)
     .filter((key) => key !== "_data")
     .map((key) => folder[key]._data);
-}
+};
 
-// --- Util: navigate nested object by /path ---
-function getSchemaAtPath(schema: any, path: string): any {
+const getSchemaAtPath = (schema: any, path: string): any => {
   if (!path || path === "/") return schema;
   const parts = path.replace(/^\/|\/$/g, "").split("/");
   let curr = schema;
@@ -34,10 +28,9 @@ function getSchemaAtPath(schema: any, path: string): any {
     }
   }
   return curr;
-}
+};
 
-// --- Util: build nested tree from flat array of nodes ---
-function buildUserSchema(flatNodes: NodeType[], givenSchema = {}): any {
+const buildUserSchema = (flatNodes: NodeType[], givenSchema = {}): any => {
   const schema = JSON.parse(JSON.stringify(givenSchema));
   flatNodes.forEach((node) => {
     const parts = node.path.replace(/^\/|\/$/g, "").split("/");
@@ -49,31 +42,32 @@ function buildUserSchema(flatNodes: NodeType[], givenSchema = {}): any {
     curr._data = node;
   });
   return schema;
-}
+};
 
-function getAllFolderPaths(
+const getAllFolderPaths = (
   schema: any,
   currentPath = "",
   acc: string[] = []
-): string[] {
+): string[] => {
   if (!schema) return acc;
   if (schema._data?.type === "folder" || currentPath === "") {
     acc.push(currentPath === "" ? "/" : currentPath);
-    for (const key of Object.keys(schema)) {
-      if (key !== "_data") {
+    Object.keys(schema)
+      .filter((key) => key !== "_data")
+      .forEach((key) =>
         getAllFolderPaths(
           schema[key],
           `${currentPath === "" ? "" : currentPath}/` + key,
           acc
-        );
-      }
-    }
+        )
+      );
   }
   return acc;
-}
+};
 
-export default function FileSystemPage() {
-  // --- State declarations ---
+// --- Main Component ---
+
+const FileSystemPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
@@ -85,6 +79,7 @@ export default function FileSystemPage() {
 
   const supabase = createClient();
 
+  // Breadcrumb click handler
   const handleBreadcrumbNavigate = (crumbPath: string) => {
     setUrlPath(crumbPath);
     const params = new URLSearchParams(window.location.search);
@@ -92,51 +87,46 @@ export default function FileSystemPage() {
     window.history.pushState({}, "", `?${params.toString()}`);
   };
 
-  // returns [node with the EXACT path so only returns one item]
+  // Fetch node with exact path
   const getNodeFromPath = async (path: string, userId = currentUserId) => {
     const { data, error } = await supabase
       .from("nodes")
       .select("*")
       .eq("path", path)
       .eq("user_id", userId);
-    if (!error) return data;
-    else return error;
+    return error ? error : data;
   };
 
-  // returns [nodes inside a specified path returns multiple]
+  // Fetch all nodes under a specific path
   const getNodesFromPath = async (path: string, userId = currentUserId) => {
     const { data, error } = await supabase
       .from("nodes")
       .select("*")
       .like("path", `${path}%`)
       .eq("user_id", userId);
-    if (!error) return data;
-    else return error;
+    return error ? error : data;
   };
 
-  // --- Extract URL params on mount (in browser only) ---
+  // On mount: extract URL params
   useEffect(() => {
     if (typeof window !== "undefined") {
-      console.log("ran");
       const params = new URLSearchParams(window.location.search);
       setUrlUser(params.get("user") || "");
       setUrlPath(params.get("path") || "/");
     }
   }, []);
 
-  // --- On user and path change: fetch current user and schema ---
+  // On user/path change: fetch schema and nodes
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       setLoading(true);
 
-      // Only get query params directly from the browser, not from possibly stale state
       const params = new URLSearchParams(window.location.search);
-      let realUser = params.get("user");
-      let realPath = params.get("path");
+      const realUser = params.get("user");
+      const realPath = params.get("path");
 
-      // 1. If missing params, redirect ONCE to set them in the URL
+      // Redirect if not logged in or missing params
       if (!realUser || !realPath) {
-        // get current user for redirect
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -144,95 +134,55 @@ export default function FileSystemPage() {
           window.location.replace(`/auth/login`);
           return;
         }
-        window.location.replace(`/files?user=${user.id}&path=/`); // replace (not assign) avoids one extra history entry
-        return; // DO NOT proceed!
+        window.location.replace(`/files?user=${user.id}&path=/`);
+        return;
       }
 
-      // Set your states from the REAL url then load data
       setCurrentUserId(realUser);
       setUrlUser(realUser);
       setUrlPath(realPath);
 
-      // Fetch data
       const data = await getNodesFromPath("/", realUser);
-
       const schema = buildUserSchema(data || []);
       setUserSchema(schema);
 
-      //Display Data
       const folderObj = getSchemaAtPath(schema, realPath);
       setNodes(getNodesAtLevel(folderObj));
       setLoading(false);
-    }
+    };
 
     init();
     // eslint-disable-next-line
-  }, [urlPath, urlUser]); // Optionally remove urlUser, urlPath from dependencies if you're only using the real ones each time
+  }, [urlPath, urlUser]);
 
-  // --- Handler: re-fetch data after creating a node ---
+  // On created node, refresh schema and UI
   const handleNodeCreated = async (path: string, userId: string) => {
     setLoading(true);
-
     const nodeList: NodeType[] = await getNodeFromPath(path, userId);
-
     const schemaUpdated = buildUserSchema(nodeList, userSchema);
     setUserSchema(schemaUpdated);
 
-    //display the new schema
     const folderObj = getSchemaAtPath(schemaUpdated, urlPath);
     setNodes(getNodesAtLevel(folderObj));
-
     setLoading(false);
   };
 
-  // --- UI render ---
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-100 mb-6">
-          <BreadCrumbs
-            path={urlPath}
-            onNavigate={handleBreadcrumbNavigate}
-          ></BreadCrumbs>
+          <BreadCrumbs path={urlPath} onNavigate={handleBreadcrumbNavigate} />
         </h1>
 
         {/* Files/Folders List */}
-        <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-8 gap-4">
-          {nodes.map((node: NodeType) => (
-            <div
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {nodes.map((node) => (
+            <NodeCard
               key={node.id}
-              className="-mb-1 flex flex-col items-center justify-center bg-transparent hover:bg-slate-900 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
-              style={{ width: 120, minHeight: 120 }}
-              onDoubleClick={() => {
-                if (node.type === "folder") {
-                  // Build the new path: ensure we handle slashes gracefully
-                  const nextPath =
-                    urlPath === "/"
-                      ? `/${node.name}`
-                      : `${urlPath.replace(/\/$/, "")}/${node.name}`;
-                  {
-                    console.log(nextPath);
-                  }
-                  setUrlPath(nextPath);
-                  // Update browser address bar (for refresh & sharing)
-                  const params = new URLSearchParams(window.location.search);
-                  params.set("path", nextPath);
-                  window.history.pushState({}, "", `?${params.toString()}`);
-                }
-              }}
-            >
-              <div className=" text-9xl text-primary">
-                {node.type === "folder" ? (
-                  // <AiOutlineFolder />
-                  <AiFillFolder />
-                ) : (
-                  <AiFillFile />
-                )}
-              </div>
-              <span className="-mt-1 text-sm break-all text-center text-gray-100 unselectable">
-                {node.name}
-              </span>
-            </div>
+              node={node}
+              urlPath={urlPath}
+              setUrlPath={setUrlPath}
+            />
           ))}
         </div>
 
@@ -244,8 +194,6 @@ export default function FileSystemPage() {
           </div>
         )}
       </div>
-
-      {/* Breadcrumbs */}
 
       {/* Floating Add Button */}
       <button
@@ -267,13 +215,11 @@ export default function FileSystemPage() {
         </svg>
       </button>
 
-      {/* Modal */}
+      {/* Create Node Modal */}
       <CreateNodeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onNodeCreated={(path: string, userId: string) => {
-          handleNodeCreated(path, userId);
-        }}
+        onNodeCreated={handleNodeCreated}
         userId={currentUserId}
         username={currentUsername}
         currentPath={urlPath}
@@ -281,4 +227,6 @@ export default function FileSystemPage() {
       />
     </div>
   );
-}
+};
+
+export default FileSystemPage;
