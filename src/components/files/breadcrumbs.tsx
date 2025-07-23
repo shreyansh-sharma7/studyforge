@@ -25,12 +25,15 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ path, onNavigate }) => {
   const crumbs = getBreadcrumbs(path);
 
   return (
-    <nav className="flex items-center gap-2 mb-4" aria-label="Breadcrumb">
-      <div className="flex items-center bg-neutral-900 rounded-md">
+    <nav
+      className="flex items-center gap-2 mb-4 unselectable"
+      aria-label="Breadcrumb"
+    >
+      <div className="flex items-center bg-neutral-800 rounded-md">
         {crumbs.map((crumb, idx) => (
           <span key={crumb.path} className=" flex items-center">
             <button
-              className={` text-lg px-2 py-1 focus:outline-none saira-regular
+              className={`cursor-pointer text-2xl px-2 py-1 focus:outline-none saira-regular
               ${
                 idx === crumbs.length - 1
                   ? "font-bold text-emerald-400 cursor-default"
