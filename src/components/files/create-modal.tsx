@@ -1,10 +1,11 @@
-// components/filesystem/CreateNodeModal.tsx
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/client";
-import { useEffect } from "react";
 import { NodeType } from "../../../database.types";
+import Modal from "@/components/ui/modal";
+import Input from "../ui/input";
+import Select from "../ui/select";
 
 interface CreateNodeModalProps {
   isOpen: boolean;
@@ -12,8 +13,8 @@ interface CreateNodeModalProps {
   onNodeCreated: (path: string, user_id: string, updateAll?: boolean) => void;
   userId: string | null;
   username: string | null;
-  currentPath: string; // NEW
-  existingFolders: string[]; // NEW
+  currentPath: string;
+  existingFolders: string[];
 }
 
 export default function CreateNodeModal({
@@ -25,16 +26,8 @@ export default function CreateNodeModal({
   currentPath,
   existingFolders,
 }: CreateNodeModalProps) {
-  useEffect(() => {
-    if (isOpen) {
-      setFormData((prev) => ({
-        ...prev,
-        path: currentPath,
-      }));
-    }
-  }, [isOpen, currentPath]);
-
   const supabase = createClient();
+
   const [formData, setFormData] = useState({
     name: "",
     type: "folder" as "folder" | "file",
@@ -44,6 +37,23 @@ export default function CreateNodeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        path: currentPath,
+      }));
+      setError(null);
+      setLoading(false);
+      setFormData((prev) => ({
+        ...prev,
+        name: "",
+        type: "folder",
+        metadata: {},
+      }));
+    }
+  }, [isOpen, currentPath]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
@@ -52,24 +62,30 @@ export default function CreateNodeModal({
     setError(null);
 
     try {
-      const node = {
+      const trimmedName = formData.name.trim();
+      if (!trimmedName) {
+        setError("Name is required");
+        setLoading(false);
+        return;
+      }
+
+      const node: Partial<NodeType> = {
         user_id: userId,
         username,
-        parent_id: null, // Root level for now
-        name: formData.name.trim(),
+        parent_id: null, // set parent_id logic if needed
+        name: trimmedName,
         type: formData.type,
         metadata: formData.metadata,
-        path: `${
-          formData.path == "/" ? "" : formData.path
-        }/${formData.name.trim()}/`,
+        path: `${formData.path === "/" ? "" : formData.path}/${trimmedName}/`,
       };
-      const { error } = await supabase.from("nodes").insert([node]);
 
-      if (error) throw error;
+      const { error: insertError } = await supabase
+        .from("nodes")
+        .insert([node]);
+      if (insertError) throw insertError;
 
-      // Reset form and close modal
       setFormData({ name: "", type: "folder", metadata: {}, path: "/" });
-      onNodeCreated(node.path, node.user_id);
+      onNodeCreated(node.path!, node.user_id!);
       onClose();
     } catch (error: any) {
       setError(error.message || "Failed to create item");
@@ -88,128 +104,74 @@ export default function CreateNodeModal({
     }));
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-neutral-900 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-100">Create New Item</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create New Item"
+      footer={
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-100 bg-transparent rounded-md hover:underline transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="create-node-form"
+            disabled={loading || !formData.name.trim()}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? "Creating..." : "Create"}
           </button>
         </div>
+      }
+    >
+      <form id="create-node-form" onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Name"
+          name="name"
+          value={formData.name}
+          onChange={handleInputChange}
+          placeholder="Enter name..."
+          required
+          error={
+            error && formData.name.trim() === "" ? "Name is required" : null
+          }
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name Input */}
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-400 mb-1"
-            >
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter name..."
-            />
+        <Select
+          label="Location"
+          name="path"
+          value={formData.path}
+          onChange={handleInputChange}
+          required
+          options={existingFolders.map((folder) => ({
+            value: folder,
+            label: folder,
+          }))}
+        />
+
+        <Select
+          label="Type"
+          name="type"
+          value={formData.type}
+          onChange={handleInputChange}
+          options={[
+            { value: "folder", label: "📁 Folder" },
+            { value: "file", label: "📄 File" },
+          ]}
+        />
+
+        {/* Error Message */}
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+            {error}
           </div>
-
-          <div>
-            <label
-              htmlFor="path"
-              className="block text-sm font-medium text-gray-400 mb-1"
-            >
-              Location
-            </label>
-            <select
-              id="path"
-              name="path"
-              value={formData.path}
-              onChange={handleInputChange}
-              required
-              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {existingFolders.map((folder) => (
-                <option
-                  className="bg-neutral-900 text-gray-100"
-                  key={folder}
-                  value={folder}
-                >
-                  {folder}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Type Selection */}
-          <div>
-            <label
-              htmlFor="type"
-              className="block text-sm font-medium text-gray-400 mb-1"
-            >
-              Type
-            </label>
-            <select
-              id="type"
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border text-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option className="bg-neutral-900 text-gray-100" value="folder">
-                📁 Folder
-              </option>
-              <option className="bg-neutral-900 text-gray-100" value="file">
-                📄 File
-              </option>
-            </select>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-              {error}
-            </div>
-          )}
-
-          {/* Buttons */}
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-100 bg-transparent rounded-md hover:underline transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.name.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "Creating..." : "Create"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </Modal>
   );
 }

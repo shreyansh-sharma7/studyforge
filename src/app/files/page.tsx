@@ -76,6 +76,7 @@ const FileSystemPage = () => {
   const [loading, setLoading] = useState(true);
   const [urlUser, setUrlUser] = useState<string>("");
   const [urlPath, setUrlPath] = useState<string>("/");
+  const [selected, setSelected] = useState<string[]>([]);
 
   const supabase = createClient();
 
@@ -168,7 +169,6 @@ const FileSystemPage = () => {
       ? await getNodeFromPath(path, userId)
       : await getNodesFromPath(urlPath, urlUser);
 
-    console.log(nodeList, !updateAll ? userSchema : {});
     const schemaUpdated = buildUserSchema(
       nodeList,
       !updateAll ? userSchema : {}
@@ -180,12 +180,6 @@ const FileSystemPage = () => {
     setNodes(getNodesAtLevel(folderObj));
     setLoading(false);
   };
-
-  // const fullReload = async (path: string, userId: string) => {
-  //   const nodeList: NodeType[] = await getNodesFromPath(path, userId);
-  //   const schemaUpdated = buildUserSchema(nodeList, {});
-  //   setUserSchema(schemaUpdated);
-  // };
 
   return (
     <div className="min-h-screen p-6">
@@ -203,6 +197,8 @@ const FileSystemPage = () => {
               urlPath={urlPath}
               setUrlPath={setUrlPath}
               onNodeUpdate={handleNodeUpdate}
+              selected={selected}
+              setSelected={setSelected}
             />
           ))}
         </div>

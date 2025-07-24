@@ -10,6 +10,8 @@ interface NodeCardProps {
   urlPath: string;
   setUrlPath: (path: string) => void;
   onNodeUpdate: (path: string, userId: string, del?: boolean) => {};
+  selected: string[];
+  setSelected: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const NodeCard: React.FC<NodeCardProps> = ({
@@ -17,6 +19,8 @@ const NodeCard: React.FC<NodeCardProps> = ({
   urlPath,
   setUrlPath,
   onNodeUpdate,
+  selected,
+  setSelected,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -50,11 +54,30 @@ const NodeCard: React.FC<NodeCardProps> = ({
     }
   };
 
+  const handleClick = (e) => {
+    const isMultiSelect = e.ctrlKey || e.metaKey;
+    setSelected((prev) => {
+      if (isMultiSelect) {
+        // Add nodeId if not already selected
+        return prev.includes(node.id) ? prev : [...prev, node.id];
+      } else {
+        // Single select mode
+        return [node.id];
+      }
+    });
+  };
+
   return (
     <div
-      className="hover:border nodecard relative flex flex-col items-center justify-center bg-transparent hover:bg-neutral-800 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
+      key={node.id}
+      className={`hover:border nodecard relative flex flex-col items-center justify-center ${
+        selected.includes(node.id)
+          ? "bg-neutral-700 shadow-lg border"
+          : "bg-transparent shadow-md"
+      } hover:bg-neutral-800 rounded-lg p-4 hover:shadow-lg transition-shadow`}
       style={{ width: 160, height: 160 }}
       onDoubleClick={handleDoubleClick}
+      onClick={(e) => handleClick(e)}
     >
       {/* 3 dots button */}
       <button
@@ -103,7 +126,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
       </div>
 
       {/* Name */}
-      <span className="-mt-1 text-sm break-all text-center text-gray-100 unselectable pointer-events-none">
+      <span className="-mt-1 text-sm break-words text-center text-gray-100 unselectable pointer-events-none">
         {node.name}
       </span>
     </div>
