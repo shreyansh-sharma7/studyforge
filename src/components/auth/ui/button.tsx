@@ -50,7 +50,9 @@ function Button({
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      style={{ color: "var(--color-font-primary)", backgroundColor: "var(--color-500)" 
+      }}
+      className={`${cn(buttonVariants({ variant, size, className }))}`}
       {...props}
     />
   )
