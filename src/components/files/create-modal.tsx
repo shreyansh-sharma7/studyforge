@@ -30,7 +30,7 @@ export default function CreateNodeModal({
 
   const [formData, setFormData] = useState({
     name: "",
-    type: "folder" as "folder" | "file",
+    type: "folder" as "folder" | "file" | "todo",
     metadata: {},
     path: "/",
   });
@@ -162,6 +162,7 @@ export default function CreateNodeModal({
           options={[
             { value: "folder", label: "📁 Folder" },
             { value: "file", label: "📄 File" },
+            { value: "todo", label: "todo" },
           ]}
         />
 

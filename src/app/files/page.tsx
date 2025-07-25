@@ -6,6 +6,7 @@ import CreateNodeModal from "@/components/files/create-modal";
 import BreadCrumbs from "@/components/files/breadcrumbs";
 import NodeCard from "@/components/files/nodecard";
 import { NodeType } from "../../../database.types";
+import TodoCard from "@/components/files/todocard";
 
 // --- Utilities ---
 
@@ -73,6 +74,8 @@ const FileSystemPage = () => {
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [userSchema, setUserSchema] = useState<any>(null);
   const [nodes, setNodes] = useState<NodeType[]>([]);
+  const [allNodes, setAllNodes] = useState<NodeType[]>([]);
+  const [allNodesAtLevel, setAllNodesAtLevel] = useState<NodeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [urlUser, setUrlUser] = useState<string>("");
   const [urlPath, setUrlPath] = useState<string>("/");
@@ -144,11 +147,14 @@ const FileSystemPage = () => {
       setUrlPath(realPath);
 
       const data = await getNodesFromPath("/", realUser);
+      setAllNodes(data);
       const schema = buildUserSchema(data || []);
       setUserSchema(schema);
 
       const folderObj = getSchemaAtPath(schema, realPath);
       setNodes(getNodesAtLevel(folderObj));
+      const allNodesAtPath = await getNodesFromPath(realPath, realUser);
+      setAllNodesAtLevel(allNodesAtPath);
       setLoading(false);
     };
 
@@ -181,6 +187,52 @@ const FileSystemPage = () => {
     setLoading(false);
   };
 
+  const normalizedNodes = nodes.map((node) => ({
+    ...node,
+    status: node.metadata.status?.toLowerCase().trim() || "not started",
+  }));
+  console.log(nodes);
+  const normalizedNodes2 = allNodesAtLevel
+    .filter((node) => {
+      console.log(
+        `${urlPath}/${node.name}/`,
+        node.path,
+        `${urlPath}/${node.name}/` == node.path
+      );
+      return (
+        node.type == "todo" ||
+        `${urlPath == "/" ? "" : urlPath}/${node.name}/` == node.path
+      );
+    })
+    .map((node) => {
+      if (node.type === "todo") {
+        return {
+          ...node,
+          status: node.metadata.status?.toLowerCase().trim() || "not started",
+        };
+      } else {
+        return {
+          ...node,
+          status: "Folders", // or keep whatever you'd like for other types
+        };
+      }
+    });
+
+  const uniqueStatuses = Array.from(
+    new Set(normalizedNodes2.map((node) => node.status))
+  );
+
+  const nodesByStatus: Record<string, NodeType[]> = uniqueStatuses.reduce(
+    (acc, status) => {
+      acc[status] = normalizedNodes2.filter((node) => node.status === status);
+      return acc;
+    },
+    {} as Record<string, NodeType[]>
+  );
+
+  console.log(nodesByStatus);
+
+  const todo = false;
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
@@ -189,19 +241,68 @@ const FileSystemPage = () => {
         </h1>
 
         {/* Files/Folders List */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {nodes.map((node) => (
-            <NodeCard
-              key={node.id}
-              node={node}
-              urlPath={urlPath}
-              setUrlPath={setUrlPath}
-              onNodeUpdate={handleNodeUpdate}
-              selected={selected}
-              setSelected={setSelected}
-            />
-          ))}
-        </div>
+
+        {todo == false ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {nodes.map((node) => (
+              <NodeCard
+                key={node.id}
+                node={node}
+                urlPath={urlPath}
+                setUrlPath={setUrlPath}
+                onNodeUpdate={handleNodeUpdate}
+                selected={selected}
+                setSelected={setSelected}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className={`grid grid-cols-1 md:grid-cols-${uniqueStatuses.length} gap-6`}
+          >
+            {uniqueStatuses.map((status) => (
+              <div key={status} className="bg-zinc-900 rounded p-4">
+                <h2 className="text-lg font-semibold mb-4 capitalize">
+                  {status}
+                </h2>
+                {nodesByStatus[status].length === 0 ? (
+                  <p className="text-gray-400">No items</p>
+                ) : (
+                  nodesByStatus[status].map((node) => (
+                    <TodoCard
+                      key={node.id}
+                      node={node}
+                      urlPath={urlPath}
+                      setUrlPath={setUrlPath}
+                      onNodeUpdate={handleNodeUpdate}
+                      selected={selected}
+                      setSelected={setSelected}
+                    />
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+
+          // <div className="grid grid-cols-3 gap-4">
+          //   <div className="">
+          //     <div className="text-center text-2xl">Not Started</div>
+          //   </div>
+          //   <div className="text-center">In Progress</div>
+          //   <div className="text-center">Done</div>
+          //   {nodes.map((node) => (
+          //     <TodoCard
+          //       key={node.id}
+          //       node={node}
+          //       urlPath={urlPath}
+          //       setUrlPath={setUrlPath}
+          //       onNodeUpdate={handleNodeUpdate}
+          //       selected={selected}
+          //       setSelected={setSelected}
+          //     ></TodoCard>
+          //   ))}
+          // </div>
+        )}
 
         {!loading && nodes.length === 0 && (
           <div className="text-center py-12">
@@ -216,6 +317,25 @@ const FileSystemPage = () => {
       <button
         onClick={() => setIsModalOpen(true)}
         className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
+        </svg>
+      </button>
+
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-24 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
       >
         <svg
           className="w-6 h-6"
