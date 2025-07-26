@@ -7,6 +7,7 @@ import BreadCrumbs from "@/components/files/breadcrumbs";
 import NodeCard from "@/components/files/nodecard";
 import { NodeType } from "../../../database.types";
 import TodoCard from "@/components/files/todocard";
+import { Peek } from "@/components/ui/peek";
 
 // --- Utilities ---
 
@@ -80,6 +81,8 @@ const FileSystemPage = () => {
   const [urlUser, setUrlUser] = useState<string>("");
   const [urlPath, setUrlPath] = useState<string>("/");
   const [selected, setSelected] = useState<string[]>([]);
+  const [peekNode, setPeekNode] = useState<NodeType>();
+  const [isPeekOpen, setIsPeekOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -230,12 +233,18 @@ const FileSystemPage = () => {
     {} as Record<string, NodeType[]>
   );
 
+  useEffect(() => {
+    if (peekNode) {
+      setIsPeekOpen(true);
+    }
+  }, [peekNode]);
+
   console.log(nodesByStatus);
 
   const todo = false;
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen relative">
+      <div className="w-full absolute m-6">
         <h1 className="text-3xl font-bold text-gray-100 mb-6">
           <BreadCrumbs path={urlPath} onNavigate={handleBreadcrumbNavigate} />
         </h1>
@@ -253,6 +262,8 @@ const FileSystemPage = () => {
                 onNodeUpdate={handleNodeUpdate}
                 selected={selected}
                 setSelected={setSelected}
+                peekNode={peekNode!}
+                setPeekNode={setPeekNode}
               />
             ))}
           </div>
@@ -312,7 +323,6 @@ const FileSystemPage = () => {
           </div>
         )}
       </div>
-
       {/* Floating Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
@@ -332,26 +342,6 @@ const FileSystemPage = () => {
           />
         </svg>
       </button>
-
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-24 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-      </button>
-
       {/* Create Node Modal */}
       <CreateNodeModal
         isOpen={isModalOpen}
@@ -362,6 +352,15 @@ const FileSystemPage = () => {
         currentPath={urlPath}
         existingFolders={getAllFolderPaths(userSchema)}
       />
+      {isPeekOpen ? (
+        <Peek
+          isOpen={isPeekOpen}
+          onClose={() => setIsPeekOpen(false)}
+          node={peekNode!}
+        ></Peek>
+      ) : (
+        ""
+      )}
     </div>
   );
 };

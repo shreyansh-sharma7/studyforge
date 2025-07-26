@@ -4,6 +4,7 @@ import { FiMoreVertical } from "react-icons/fi";
 import { NodeType } from "../../../database.types";
 
 import { deleteNode, updateNode } from "@/lib/files/file-actions";
+import { EditNode } from "./edit-node";
 
 interface NodeCardProps {
   node: NodeType;
@@ -12,6 +13,8 @@ interface NodeCardProps {
   onNodeUpdate: (path: string, userId: string, del?: boolean) => {};
   selected: string[];
   setSelected: React.Dispatch<React.SetStateAction<string[]>>;
+  peekNode: NodeType;
+  setPeekNode: React.Dispatch<React.SetStateAction<NodeType | undefined>>;
 }
 
 const NodeCard: React.FC<NodeCardProps> = ({
@@ -21,6 +24,8 @@ const NodeCard: React.FC<NodeCardProps> = ({
   onNodeUpdate,
   selected,
   setSelected,
+  peekNode,
+  setPeekNode,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -51,6 +56,8 @@ const NodeCard: React.FC<NodeCardProps> = ({
       const params = new URLSearchParams(window.location.search);
       params.set("path", nextPath);
       window.history.pushState({}, "", `?${params.toString()}`);
+    } else if (node.type == "todo") {
+      setPeekNode(node);
     }
   };
 
