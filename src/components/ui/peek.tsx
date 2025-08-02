@@ -11,7 +11,7 @@ type PeekProps = {
 };
 
 const Peek = ({ isOpen, onClose, node }: PeekProps) => {
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [template, setTemplate] = useState<any[]>([]);
 
   // Do not render the component if closed
   if (!isOpen) return null;
@@ -33,38 +33,42 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
   // Create supabase client, server side
   const supabase = createClient();
 
-  // Fetch templates data related to this node’s user and path
-  const getTemplateFromUserPath = async (userId: string, path: string) => {
+  // Fetch template data related to this node’s user and path
+  const getTemplateFromUser = async (userId: string) => {
     const { data, error } = await supabase
-      .from("templates")
+      .from("projects")
       .select("*")
-      .eq("user_id", userId)
-      .like("path", `${path}%`);
+      .eq("user_id", userId);
 
     if (error) {
-      console.error("Failed to fetch templates", error);
+      console.error("Failed to fetch template", error);
       return;
     }
-    return data;
+    return data[0].template;
   };
 
   useEffect(() => {
-    if (!node.user_id || !node.path) return; // guard condition
+    if (!node.user_id) return; // guard condition
 
-    const fetchTemplates = async () => {
-      const templatesData = await getTemplateFromUserPath(
-        node.user_id!,
-        node.path
-      );
-      if (templatesData) {
-        setTemplates(templatesData);
+    const fetchTemplate = async () => {
+      const templateData = await getTemplateFromUser(node.user_id!);
+      if (templateData) {
+        setTemplate(templateData);
+        console.log(templateData);
       }
     };
 
-    fetchTemplates();
+    fetchTemplate();
   }, [node.user_id, node.path]);
 
-  console.log(templates);
+  useEffect(() => {
+    const templateResolver = () => {
+      for (const property in template) {
+        console.log(property);
+      }
+    };
+    templateResolver();
+  }, [template]);
 
   return (
     <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto">

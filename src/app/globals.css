@@ -156,3 +156,26 @@
 .nodecard:hover .kebab-buttons{
   display: block;
 }
+
+.create-button {
+  transition: 400ms ease;
+  /* animation: bobupdown 1000ms ease-in-out 0ms infinite alternate; */
+  filter: drop-shadow(0 0 4px rgb(93, 86, 86));
+  /* will-change: transform; */
+}
+
+/* @keyframes bobupdown {
+  0% {
+    transform: translate(0, 5px);
+  }
+  100% {
+    transform: translate(0, -5px);
+}
+} */
+
+
+.create-button:hover {
+  transform: scale(1.25);
+  filter: drop-shadow(0 0 8px rgb(93, 86, 86));
+
+}

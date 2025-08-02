@@ -194,14 +194,8 @@ const FileSystemPage = () => {
     ...node,
     status: node.metadata.status?.toLowerCase().trim() || "not started",
   }));
-  console.log(nodes);
   const normalizedNodes2 = allNodesAtLevel
     .filter((node) => {
-      console.log(
-        `${urlPath}/${node.name}/`,
-        node.path,
-        `${urlPath}/${node.name}/` == node.path
-      );
       return (
         node.type == "todo" ||
         `${urlPath == "/" ? "" : urlPath}/${node.name}/` == node.path
@@ -238,8 +232,6 @@ const FileSystemPage = () => {
       setIsPeekOpen(true);
     }
   }, [peekNode]);
-
-  console.log(nodesByStatus);
 
   const todo = false;
   return (

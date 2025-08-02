@@ -5,10 +5,6 @@ import { createClient } from "@/lib/server";
 import { Peek } from "@/components/ui/peek";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data } = await supabase.from("users").select("*");
-  const userdata = await supabase.auth.getUser();
-  console.log(userdata);
   return (
     <div className="h-full  text-primary">
       {}
