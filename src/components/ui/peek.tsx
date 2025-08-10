@@ -8,6 +8,7 @@ import { ContextMenu } from "./context-menu";
 import { ContextItem } from "./context-item";
 import { MenuContext } from "@/lib/contexts";
 import { updateNode } from "@/lib/files/file-actions";
+import Input from "./input";
 
 type PeekProps = {
   isOpen: boolean; // Controls the visibility of the panel
@@ -39,6 +40,8 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
     [key: string]: any;
   }>({});
 
+  const [nodeName, setNodeName] = useState(node.name);
+
   // Do not render the component if the panel should be hidden
   if (!isOpen) return null;
 
@@ -69,7 +72,7 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
         setTemplate(templateData);
       }
     };
-
+    setNodeName(node.name);
     fetchTemplate();
   }, [node.user_id, node.path]);
 
@@ -87,19 +90,31 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
     //single select
   };
 
-  const handlePropContextClick = (propName: string, newValue: any) => {
+  const handlePropContextClick = (
+    propName: string,
+    newValue: any,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
     if (template[propName].type == "single-select") {
       //update node metadata  to the new value thats been clicked
       node.metadata[propName] = newValue;
 
       setNodeTemplated((prev) => ({ ...prev, [propName]: newValue }));
 
+      setContextMenuKey("");
+
       updateNode(node);
     }
   };
 
+  useEffect(() => {
+    node.name = nodeName;
+    updateNode(node);
+  }, [nodeName]);
+
   return (
-    <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto">
+    <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto unselectable">
       {/* Close button */}
       <button
         onClick={onClose}
@@ -110,9 +125,11 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
       </button>
 
       {/* Node name displayed as heading */}
-      <h1 className="text-font-primary text-5xl font-medium mb-6">
-        {node.name}
-      </h1>
+      <input
+        className="text-font-primary text-5xl font-medium mb-6 focus:outline-0"
+        value={nodeName}
+        onChange={(e) => setNodeName(e.target.value)}
+      />
 
       {/* Key properties of the node */}
       <div className="propertiescont space-y-1">
@@ -146,8 +163,8 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
                       return (
                         <ContextItem
                           title={value}
-                          onclick={() => {
-                            handlePropContextClick(propName, value);
+                          onclick={(e) => {
+                            handlePropContextClick(propName, value, e!);
                           }}
                         ></ContextItem>
                       );
@@ -158,6 +175,40 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
             )}
           </div>
         ))}
+        <div className="property flex gap-4 text-sm items-center">
+          {contextMenuKey != `createprop_${node.id}` && (
+            <button
+              onClick={() => {
+                setContextMenuKey(`createprop_${node.id}`);
+              }}
+              className="key w-36 hover:bg-neutral-700 rounded p-2 text-gray-500 hover:text-white"
+            >
+              + Add Property
+            </button>
+          )}
+
+          {contextMenuKey == `createprop_${node.id}` && (
+            <div className="">
+              <div className="value min-w-56 rounded">
+                <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm">
+                  <input
+                    placeholder="Property Name"
+                    className="rounded focus:outline-0"
+                  ></input>
+                </div>
+                <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
+                  <ContextMenu key={`createprop_${node.id}`}>
+                    <ContextItem
+                      title="Single Select"
+                      onclick={(e) => {}}
+                    ></ContextItem>
+                    <ContextItem title="Text" onclick={(e) => {}}></ContextItem>
+                  </ContextMenu>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

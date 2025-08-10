@@ -23,6 +23,8 @@ export const ContextMenu = ({
 
       {/* prop context type */}
       {contextType == "prop" && <div className="">{children}</div>}
+
+      {contextType == "createprop" && <div>{children}</div>}
     </div>
   );
 };

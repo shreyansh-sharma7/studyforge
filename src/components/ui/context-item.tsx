@@ -6,7 +6,7 @@ export const ContextItem = ({
   onclick,
 }: {
   title: string;
-  onclick: () => void;
+  onclick: (e?: React.MouseEvent) => void;
 }) => {
   const menuContext = useContext(MenuContext);
   const contextType = menuContext.contextMenuKey.split("_")[0];
@@ -26,7 +26,16 @@ export const ContextItem = ({
           className="block w-full text-left px-3 py-2 text-xs hover:bg-zinc-500 rounded"
           onClick={onclick}
         >
-          <span className="bg-cyan-700 p-1 rounded font-bold bg-">{title}</span>
+          <span className="bg-cyan-700 p-1 rounded font-bold">{title}</span>
+        </button>
+      )}
+
+      {contextType == "createprop" && (
+        <button
+          className="block w-full text-left px-3 py-2 text-xs hover:bg-zinc-500 rounded"
+          onClick={onclick}
+        >
+          <span className=" p-1 rounded">{title}</span>
         </button>
       )}
     </div>
