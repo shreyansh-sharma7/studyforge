@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useContext } from "react";
 import { AiFillFolder, AiFillFile } from "react-icons/ai";
 import { FiMoreVertical } from "react-icons/fi";
 import { NodeType } from "../../../database.types";
 
-import { deleteNode, updateNode } from "@/lib/files/file-actions";
-import { EditNode } from "./edit-node";
+import { ContextMenu } from "../ui/context-menu";
+import { MenuContext } from "@/lib/contexts";
+import { ContextItem } from "../ui/context-item";
+import { deleteNode } from "@/lib/files/file-actions";
 
 interface NodeCardProps {
   node: NodeType;
@@ -27,51 +29,57 @@ const NodeCard: React.FC<NodeCardProps> = ({
   peekNode,
   setPeekNode,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Consume shared menu context for open menu key and updater
+  const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
 
+  // Toggle context menu open/close for this node
   const toggleMenu = (e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent also triggering parent's double click
-    setMenuOpen((open) => !open);
+    e.stopPropagation(); // Prevent triggering parent's double click
+    setContextMenuKey(
+      contextMenuKey === `node_${node.id}` ? "" : `node_${node.id}`
+    );
   };
 
-  // Close menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
+  // Close menu when clicking outside
 
-    const handleClickOutside = () => setMenuOpen(false);
+  // fix later
 
-    window.addEventListener("click", handleClickOutside);
-    return () => window.removeEventListener("click", handleClickOutside);
-  }, [menuOpen]);
+  // useEffect(() => {
+  //   if (!contextMenuKey) return;
 
+  //   const handleClickOutside = () => setContextMenuKey("");
+  //   window.addEventListener("click", handleClickOutside);
+  //   return () => window.removeEventListener("click", handleClickOutside);
+  // }, [contextMenuKey, setContextMenuKey]);
+
+  // Handle double click: navigate if folder, or open peek for todo
   const handleDoubleClick = () => {
     if (node.type === "folder") {
       const nextPath =
         urlPath === "/"
           ? `/${node.name}`
           : `${urlPath.replace(/\/$/, "")}/${node.name}`;
-
       setUrlPath(nextPath);
 
+      // Update URL query params with new path
       const params = new URLSearchParams(window.location.search);
       params.set("path", nextPath);
       window.history.pushState({}, "", `?${params.toString()}`);
-    } else if (node.type == "todo") {
+    } else if (node.type === "todo") {
       setPeekNode(node);
     }
   };
 
-  const handleClick = (e) => {
+  // Handle click for single or multi-selection of nodes
+  const handleClick = (e: React.MouseEvent) => {
     const isMultiSelect = e.ctrlKey || e.metaKey;
-    setSelected((prev) => {
-      if (isMultiSelect) {
-        // Add nodeId if not already selected
-        return prev.includes(node.id) ? prev : [...prev, node.id];
-      } else {
-        // Single select mode
-        return [node.id];
-      }
-    });
+    setSelected((prev) =>
+      isMultiSelect
+        ? prev.includes(node.id)
+          ? prev
+          : [...prev, node.id]
+        : [node.id]
+    );
   };
 
   return (
@@ -84,9 +92,9 @@ const NodeCard: React.FC<NodeCardProps> = ({
       } hover:bg-neutral-800 rounded-lg p-4 hover:shadow-lg transition-shadow`}
       style={{ width: 160, height: 160 }}
       onDoubleClick={handleDoubleClick}
-      onClick={(e) => handleClick(e)}
+      onClick={handleClick}
     >
-      {/* 3 dots button */}
+      {/* Button to toggle context menu */}
       <button
         onClick={toggleMenu}
         className="absolute top-2 right-2 p-1 rounded hover:bg-gray-700"
@@ -95,44 +103,26 @@ const NodeCard: React.FC<NodeCardProps> = ({
         <FiMoreVertical className="kebab-buttons text-gray-300" />
       </button>
 
-      {/* Dropdown menu */}
-      {menuOpen && (
-        <div
-          className="absolute top-8 right-2 z-50 w-32 bg-neutral-800 rounded shadow-md text-gray-200"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="block w-full text-left px-3 py-2 hover:bg-neutral-700"
-            onClick={async () => {
-              setMenuOpen(false);
+      {/* Conditionally render context menu if this node's menu is open */}
+      {contextMenuKey === `node_${node.id}` && (
+        <ContextMenu key={`node_${node.id}`}>
+          <ContextItem
+            title="Delete"
+            onclick={async () => {
+              setContextMenuKey("");
               await deleteNode(node);
               onNodeUpdate(node.path, node.user_id!, true);
             }}
-          >
-            Delete
-          </button>
-          <button
-            className="block w-full text-left px-3 py-2 hover:bg-neutral-700"
-            onClick={async () => {
-              setMenuOpen(false);
-              node.name = "gang";
-              node.path = "/gang/";
-              await updateNode(node);
-              // onNodeUpdate(node.path, node.user_id!, true);
-            }}
-          >
-            Rename
-          </button>
-          {/* Add more menu options below if needed */}
-        </div>
+          ></ContextItem>
+        </ContextMenu>
       )}
 
-      {/* Icon */}
+      {/* Icon based on node type */}
       <div className="text-9xl text-primary-400 pointer-events-none">
         {node.type === "folder" ? <AiFillFolder /> : <AiFillFile />}
       </div>
 
-      {/* Name */}
+      {/* Node name */}
       <span className="-mt-1 text-sm break-words text-center text-gray-100 unselectable pointer-events-none">
         {node.name}
       </span>

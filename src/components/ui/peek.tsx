@@ -1,39 +1,51 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { NodeType } from "../../../database.types";
+import { resolveTemplate } from "@/lib/utils";
+import { ContextMenu } from "./context-menu";
+import { ContextItem } from "./context-item";
+import { MenuContext } from "@/lib/contexts";
+import { updateNode } from "@/lib/files/file-actions";
 
 type PeekProps = {
-  isOpen: boolean;
-  node: NodeType;
-  onClose: () => void;
+  isOpen: boolean; // Controls the visibility of the panel
+  node: NodeType; // The node object containing data to display
+  onClose: () => void; // Callback function to close the panel
+};
+
+type Template = {
+  [key: string]: {
+    type: "single-select" | "path" | "date_created" | "text";
+    hidden: boolean;
+    values: string[];
+  };
 };
 
 const Peek = ({ isOpen, onClose, node }: PeekProps) => {
-  const [template, setTemplate] = useState<any[]>([]);
+  const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
+  const [template, setTemplate] = useState<Template>({
+    path: { type: "path", hidden: false, values: [] },
+    status: {
+      type: "single-select",
+      hidden: false,
+      values: ["not started", "in progress", "done"],
+    },
+    "date created": { type: "date_created", hidden: false, values: [] },
+  }); // State to store template data
 
-  // Do not render the component if closed
+  const [nodeTemplated, setNodeTemplated] = useState<{
+    [key: string]: any;
+  }>({});
+
+  // Do not render the component if the panel should be hidden
   if (!isOpen) return null;
 
-  // Format creation date nicely
-  const options: Intl.DateTimeFormatOptions = {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  };
-  const creation_date = new Date(node.created_at).toLocaleString(
-    "en-US",
-    options
-  );
-
-  // Create supabase client, server side
+  // Create a Supabase client instance
   const supabase = createClient();
 
-  // Fetch template data related to this node’s user and path
+  // Fetch the template data associated with the node's user from Supabase
   const getTemplateFromUser = async (userId: string) => {
     const { data, error } = await supabase
       .from("projects")
@@ -44,31 +56,47 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
       console.error("Failed to fetch template", error);
       return;
     }
-    return data[0].template;
+    return data && data.length > 0 ? data[0].template : null;
   };
 
+  // On every user or path change, fetch the relevant template data
   useEffect(() => {
-    if (!node.user_id) return; // guard condition
+    if (!node.user_id) return;
 
     const fetchTemplate = async () => {
       const templateData = await getTemplateFromUser(node.user_id!);
       if (templateData) {
         setTemplate(templateData);
-        console.log(templateData);
       }
     };
 
     fetchTemplate();
   }, [node.user_id, node.path]);
 
+  // Effect for resolving or processing template data
   useEffect(() => {
-    const templateResolver = () => {
-      for (const property in template) {
-        console.log(property);
-      }
-    };
-    templateResolver();
-  }, [template]);
+    setNodeTemplated(resolveTemplate(template, node));
+  }, [template, node]);
+
+  const handlePropValueClick = (propName: string) => {
+    if (template[propName].type == "single-select") {
+      setContextMenuKey(`prop_${node.id}_${propName}`);
+    } else {
+      setContextMenuKey("");
+    }
+    //single select
+  };
+
+  const handlePropContextClick = (propName: string, newValue: any) => {
+    if (template[propName].type == "single-select") {
+      //update node metadata  to the new value thats been clicked
+      node.metadata[propName] = newValue;
+
+      setNodeTemplated((prev) => ({ ...prev, [propName]: newValue }));
+
+      updateNode(node);
+    }
+  };
 
   return (
     <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto">
@@ -81,35 +109,55 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
         &times;
       </button>
 
+      {/* Node name displayed as heading */}
       <h1 className="text-font-primary text-5xl font-medium mb-6">
         {node.name}
       </h1>
 
+      {/* Key properties of the node */}
       <div className="propertiescont space-y-1">
-        <div className="property flex gap-4">
-          <div className="key w-36 hover:bg-neutral-700 rounded p-2">
-            Date Created
-          </div>
-          <div className="value min-w-36 hover:bg-neutral-700 rounded p-2">
-            {creation_date}
-          </div>
-        </div>
+        {Object.keys(nodeTemplated).map((propName) => (
+          <div className="property flex gap-4 text-sm items-center">
+            <div className="key w-36 hover:bg-neutral-700 rounded p-2">
+              {propName}
+            </div>
+            {contextMenuKey != `prop_${node.id}_${propName}` && (
+              <div
+                onClick={() => handlePropValueClick(propName)}
+                className="value min-w-56 hover:bg-neutral-700 rounded p-2"
+              >
+                <div>{nodeTemplated[propName]}</div>
+              </div>
+            )}
 
-        <div className="property flex gap-4">
-          <div className="key w-36 hover:bg-neutral-700 rounded p-2">
-            Status
+            {contextMenuKey == `prop_${node.id}_${propName}` && (
+              <div
+                onClick={() => handlePropValueClick(propName)}
+                className="value min-w-56 rounded"
+              >
+                <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm">
+                  <span className="bg-cyan-700 p-1 rounded font-bold">
+                    {nodeTemplated[propName]}
+                  </span>
+                </div>
+                <div className="p-1 absolute bg-zinc-700 min-w-56">
+                  <ContextMenu key={`prop_${node.id}_${propName}`}>
+                    {template[propName].values.map((value) => {
+                      return (
+                        <ContextItem
+                          title={value}
+                          onclick={() => {
+                            handlePropContextClick(propName, value);
+                          }}
+                        ></ContextItem>
+                      );
+                    })}
+                  </ContextMenu>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="value min-w-36 hover:bg-neutral-700 rounded p-2">
-            {node.metadata?.status || "Unknown"}
-          </div>
-        </div>
-
-        <div className="property flex gap-4">
-          <div className="key w-36 hover:bg-neutral-700 rounded p-2">Path</div>
-          <div className="value min-w-36 hover:bg-neutral-700 rounded p-2">
-            {node.path}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
