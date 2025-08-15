@@ -1,5 +1,6 @@
 import { MenuContext } from "@/lib/contexts";
 import { useContext } from "react";
+import { ContextItem } from "./context-item";
 
 export const ContextMenu = ({
   children,
@@ -22,7 +23,7 @@ export const ContextMenu = ({
       )}
 
       {/* prop context type */}
-      {contextType == "prop" && <div className="">{children}</div>}
+      {contextType == "prop" && <div className="">{children} </div>}
 
       {contextType == "createprop" && <div>{children}</div>}
     </div>

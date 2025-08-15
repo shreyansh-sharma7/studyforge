@@ -187,11 +187,24 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
     }
   };
 
-  const updateTemplate = async (template: Template, user_id: string) => {
+  const updateTemplate = async (template: Template, user_id = node.user_id) => {
     const { data, error } = await supabase
       .from("projects")
       .update({ template: template })
       .eq("user_id", user_id);
+  };
+
+  const addPropertyValue = async (
+    template: Template,
+    propertyName: string,
+    propertyValue: any
+  ) => {
+    if (!template[propertyName].values.includes(propertyValue))
+      template[propertyName].values.push(propertyValue);
+    else {
+      console.warn("Value on this property already exists");
+    }
+    updateTemplate(template);
   };
 
   return (
@@ -236,7 +249,13 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
                 onClick={() => handlePropValueClick(propName)}
                 className="value min-w-56 hover:bg-neutral-700 rounded p-2"
               >
-                <div>{nodeTemplated[propName]}</div>
+                <div>
+                  {nodeTemplated[propName] ? (
+                    nodeTemplated[propName]
+                  ) : (
+                    <span className="text-gray-500">Empty</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -245,12 +264,19 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
                 onClick={() => handlePropValueClick(propName)}
                 className="value min-w-56 rounded"
               >
-                <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm">
-                  <span className="bg-cyan-700 p-1 rounded font-bold">
-                    {nodeTemplated[propName]}
+                <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm ">
+                  <span
+                    className={`rounded focus:outline-0 w-32 text-gray-400 p-1  text-sm  ${
+                      nodeTemplated[propName] &&
+                      "bg-cyan-700 font-bold text-white"
+                    }`}
+                  >
+                    {nodeTemplated[propName]
+                      ? nodeTemplated[propName]
+                      : "Empty"}
                   </span>
                 </div>
-                <div className="p-1 absolute bg-zinc-700 min-w-56">
+                <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
                   <ContextMenu key={`prop_${node.id}_${propName}`}>
                     {template[propName].values.map((value) => {
                       return (
@@ -263,6 +289,14 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
                         ></ContextItem>
                       );
                     })}
+                    <ContextItem
+                      key={`input_${node.id}_${propName}`}
+                      title="+ Add Property"
+                      type="input"
+                      onclick={(value) => {
+                        addPropertyValue(template, propName, value);
+                      }}
+                    ></ContextItem>
                   </ContextMenu>
                 </div>
               </div>
@@ -283,28 +317,23 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
 
           {contextMenuKey == `createprop_${node.id}` && (
             <div className="">
-              <div className="value min-w-56 rounded">
+              <div className="value w-36 rounded">
                 <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm">
                   <input
                     placeholder="Property Name"
-                    className="rounded focus:outline-0"
+                    className="rounded focus:outline-0 w-32"
                     value={createPropertyName}
                     onChange={(e) => {
                       setCreatePropertyName(e.target.value);
                     }}
                   ></input>
                 </div>
-                <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
+                <div className="p-1 absolute bg-zinc-700 w-36 rounded-b">
                   <ContextMenu key={`createprop_${node.id}`}>
                     <ContextItem
                       title="Single Select"
                       onclick={(e) => {
-                        createProperty(
-                          createPropertyName,
-                          "single-select",
-                          [],
-                          ""
-                        );
+                        createProperty(createPropertyName, "single-select", []);
                       }}
                     ></ContextItem>
                     <ContextItem title="Text" onclick={(e) => {}}></ContextItem>

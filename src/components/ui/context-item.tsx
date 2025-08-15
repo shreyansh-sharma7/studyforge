@@ -1,15 +1,18 @@
 import { MenuContext } from "@/lib/contexts";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 
 export const ContextItem = ({
   title,
   onclick,
+  type,
 }: {
   title: string;
-  onclick: (e?: React.MouseEvent) => void;
+  onclick: (...args: any[]) => void;
+  type?: "input";
 }) => {
   const menuContext = useContext(MenuContext);
-  const contextType = menuContext.contextMenuKey.split("_")[0];
+  const contextType = !type ? menuContext.contextMenuKey.split("_")[0] : type;
+  const [inputValue, setInputValue] = useState("");
 
   return (
     <div className="">
@@ -37,6 +40,27 @@ export const ContextItem = ({
         >
           <span className=" p-1 rounded">{title}</span>
         </button>
+      )}
+
+      {contextType == "input" && (
+        <div className="block w-full text-left pl-3 py-0 text-xs hover:bg-zinc-500 rounded text-gray-500 hover:text-white hover:placeholder:text-gray-100">
+          <input
+            className="py-2 rounded font-bold outline-0 focus:text-white hover:placeholder:text-gray-300 w-full"
+            placeholder={title}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+            }}
+            onKeyUp={(e) => {
+              e.stopPropagation();
+              if (e.key == "Enter") {
+                //add the property to the template
+                onclick(inputValue);
+                setInputValue("");
+              }
+            }}
+          ></input>
+        </div>
       )}
     </div>
   );
