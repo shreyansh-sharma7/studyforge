@@ -76,7 +76,9 @@ export default function CreateNodeModal({
         name: trimmedName,
         type: formData.type,
         metadata: formData.metadata,
-        path: `${formData.path === "/" ? "" : formData.path}/${trimmedName}/`,
+        path: `${formData.path === "/" ? "" : formData.path}/${trimmedName}.${
+          formData.type == "folder" ? "/" : formData.type
+        }`,
       };
 
       const { error: insertError } = await supabase

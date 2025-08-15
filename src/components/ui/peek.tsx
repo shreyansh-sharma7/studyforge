@@ -9,11 +9,13 @@ import { ContextItem } from "./context-item";
 import { MenuContext } from "@/lib/contexts";
 import { updateNode } from "@/lib/files/file-actions";
 import Input from "./input";
+import { MdSaveAs } from "react-icons/md";
 
 type PeekProps = {
   isOpen: boolean; // Controls the visibility of the panel
   node: NodeType; // The node object containing data to display
   onClose: () => void; // Callback function to close the panel
+  onNodeUpdate: (path: string, userId: string, updateAll?: boolean) => void;
 };
 
 type Template = {
@@ -24,7 +26,7 @@ type Template = {
   };
 };
 
-const Peek = ({ isOpen, onClose, node }: PeekProps) => {
+const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
   const [template, setTemplate] = useState<Template>({
     path: { type: "path", hidden: false, values: [] },
@@ -42,8 +44,26 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
 
   const [nodeName, setNodeName] = useState(node.name);
 
+  const [showSave, setShowSave] = useState(true); //for now jsut kept it always visible
+
   // Do not render the component if the panel should be hidden
   if (!isOpen) return null;
+
+  useEffect(() => {
+    const handleEscEnter = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose(); // Close the Peek panel
+      } else if (event.key == "Enter") {
+        handleEditSubmit();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscEnter);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscEnter);
+    };
+  }, [onClose]);
 
   // Create a Supabase client instance
   const supabase = createClient();
@@ -74,7 +94,7 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
     };
     setNodeName(node.name);
     fetchTemplate();
-  }, [node.user_id, node.path]);
+  }, [node.user_id, node.id]);
 
   // Effect for resolving or processing template data
   useEffect(() => {
@@ -110,8 +130,43 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
 
   useEffect(() => {
     node.name = nodeName;
-    updateNode(node);
+    const parentPath = `/${node.path
+      .replace(/^\/|\/$/g, "")
+      .split("/")
+      .slice(0, -1)
+      .join("/")}/`;
+    // console.log(parentPath);
+    node.path = parentPath + nodeName + "/";
+
+    // updateNode(node);
   }, [nodeName]);
+
+  const handleEditSubmit = async () => {
+    // copied from files page.tsx cause im lazy to refactor it
+    //check if renameds path doesnt already exist
+    const getNodeFromPath = async (path: string, userId = node.user_id) => {
+      const { data, error } = await supabase
+        .from("nodes")
+        .select("*")
+        .eq("path", path);
+      return error ? [] : data;
+    };
+    console.log(node.path);
+    const nodeAtPath = await getNodeFromPath(node.path, node.user_id);
+
+    if (nodeAtPath.length > 0) {
+      //means there is a node with the same path
+      if (nodeAtPath[0].id != node.id) {
+        //means we are trying to create a new node with the same path (not allowed)
+        console.log("bad boy trying to create same bad bad");
+        return;
+      }
+    }
+
+    await updateNode(node);
+    onNodeUpdate(node.path, node.user_id!, true);
+    setNodeTemplated(resolveTemplate(template, node));
+  };
 
   return (
     <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto unselectable">
@@ -124,9 +179,18 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
         &times;
       </button>
 
+      {showSave && (
+        <button
+          onClick={handleEditSubmit}
+          className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-40 text-2xl"
+        >
+          <MdSaveAs />
+        </button>
+      )}
+
       {/* Node name displayed as heading */}
       <input
-        className="text-font-primary text-5xl font-medium mb-6 focus:outline-0"
+        className="text-font-primary text-5xl font-medium mb-6 focus:outline-0 focus"
         value={nodeName}
         onChange={(e) => setNodeName(e.target.value)}
       />
@@ -134,7 +198,10 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
       {/* Key properties of the node */}
       <div className="propertiescont space-y-1">
         {Object.keys(nodeTemplated).map((propName) => (
-          <div className="property flex gap-4 text-sm items-center">
+          <div
+            key={`prop_${node.id}_${propName}`}
+            className="property flex gap-4 text-sm items-center"
+          >
             <div className="key w-36 hover:bg-neutral-700 rounded p-2">
               {propName}
             </div>
@@ -162,6 +229,7 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
                     {template[propName].values.map((value) => {
                       return (
                         <ContextItem
+                          key={`prop_${node.id}_${propName}_${value}`}
                           title={value}
                           onclick={(e) => {
                             handlePropContextClick(propName, value, e!);
@@ -177,14 +245,14 @@ const Peek = ({ isOpen, onClose, node }: PeekProps) => {
         ))}
         <div className="property flex gap-4 text-sm items-center">
           {contextMenuKey != `createprop_${node.id}` && (
-            <button
+            <div
               onClick={() => {
                 setContextMenuKey(`createprop_${node.id}`);
               }}
               className="key w-36 hover:bg-neutral-700 rounded p-2 text-gray-500 hover:text-white"
             >
               + Add Property
-            </button>
+            </div>
           )}
 
           {contextMenuKey == `createprop_${node.id}` && (

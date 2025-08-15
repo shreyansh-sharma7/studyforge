@@ -178,10 +178,13 @@ const FileSystemPage = () => {
       ? await getNodeFromPath(path, userId)
       : await getNodesFromPath(urlPath, urlUser);
 
+    console.log(nodeList);
     const schemaUpdated = buildUserSchema(
       nodeList,
       !updateAll ? userSchema : {}
     );
+
+    console.log(schemaUpdated);
 
     setUserSchema(schemaUpdated);
 
@@ -318,7 +321,7 @@ const FileSystemPage = () => {
       {/* Floating Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-50"
+        className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-20"
       >
         <svg
           className="w-6 h-6"
@@ -349,6 +352,7 @@ const FileSystemPage = () => {
           isOpen={isPeekOpen}
           onClose={() => setIsPeekOpen(false)}
           node={peekNode!}
+          onNodeUpdate={handleNodeUpdate}
         ></Peek>
       ) : (
         ""
