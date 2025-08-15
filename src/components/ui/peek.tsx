@@ -46,6 +46,8 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
 
   const [showSave, setShowSave] = useState(true); //for now jsut kept it always visible
 
+  const [createPropertyName, setCreatePropertyName] = useState("");
+
   // Do not render the component if the panel should be hidden
   if (!isOpen) return null;
 
@@ -168,6 +170,30 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
     setNodeTemplated(resolveTemplate(template, node));
   };
 
+  const createProperty = async (
+    name: string,
+    type: "single-select" | "text",
+    values: any[]
+  ) => {
+    console.log(template);
+    if (template[name] != null) {
+      console.warn("Property Already Exists");
+    } else {
+      template[name] = { type, values, hidden: false };
+      await updateTemplate(template, node.user_id!);
+      setNodeTemplated(resolveTemplate(template, node));
+      setContextMenuKey(`prop_${node.id}_${name}`);
+      setCreatePropertyName("");
+    }
+  };
+
+  const updateTemplate = async (template: Template, user_id: string) => {
+    const { data, error } = await supabase
+      .from("projects")
+      .update({ template: template })
+      .eq("user_id", user_id);
+  };
+
   return (
     <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto unselectable">
       {/* Close button */}
@@ -262,13 +288,24 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
                   <input
                     placeholder="Property Name"
                     className="rounded focus:outline-0"
+                    value={createPropertyName}
+                    onChange={(e) => {
+                      setCreatePropertyName(e.target.value);
+                    }}
                   ></input>
                 </div>
                 <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
                   <ContextMenu key={`createprop_${node.id}`}>
                     <ContextItem
                       title="Single Select"
-                      onclick={(e) => {}}
+                      onclick={(e) => {
+                        createProperty(
+                          createPropertyName,
+                          "single-select",
+                          [],
+                          ""
+                        );
+                      }}
                     ></ContextItem>
                     <ContextItem title="Text" onclick={(e) => {}}></ContextItem>
                   </ContextMenu>
