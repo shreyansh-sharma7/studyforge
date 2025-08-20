@@ -5,8 +5,7 @@ import { createClient } from "@/lib/client";
 import CreateNodeModal from "@/components/files/create-modal";
 import BreadCrumbs from "@/components/files/breadcrumbs";
 import NodeCard from "@/components/files/nodecard";
-import { NodeType } from "../../../database.types";
-import TodoCard from "@/components/files/todocard";
+import { NodeType, Template } from "../../../database.types";
 import { Peek } from "@/components/ui/peek";
 
 // --- Utilities ---
@@ -83,6 +82,19 @@ const FileSystemPage = () => {
   const [selected, setSelected] = useState<string[]>([]);
   const [peekNode, setPeekNode] = useState<NodeType>();
   const [isPeekOpen, setIsPeekOpen] = useState(false);
+  const [template, setTemplate] = useState<Template>({
+    path: { data: [{}], type: "path", hidden: false },
+    status: {
+      data: [
+        { color: "", value: "not started" },
+        { color: "", value: "in progress" },
+        { color: "", value: "done" },
+      ],
+      type: "single-select",
+      hidden: false,
+    },
+    "date created": { data: [{}], type: "date_created", hidden: false },
+  }); // State to store template data
 
   const supabase = createClient();
 
@@ -166,8 +178,6 @@ const FileSystemPage = () => {
   }, [urlPath, urlUser]);
 
   // On created node, refresh schema and UI
-  //when updateAll=true then refreshes the whole userschema else just adds the node
-  // also handles deletes
   const handleNodeUpdate = async (
     path: string,
     userId: string,
@@ -178,13 +188,10 @@ const FileSystemPage = () => {
       ? await getNodeFromPath(path, userId)
       : await getNodesFromPath(urlPath, urlUser);
 
-    console.log(nodeList);
     const schemaUpdated = buildUserSchema(
       nodeList,
       !updateAll ? userSchema : {}
     );
-
-    console.log(schemaUpdated);
 
     setUserSchema(schemaUpdated);
 
@@ -193,42 +200,33 @@ const FileSystemPage = () => {
     setLoading(false);
   };
 
-  const normalizedNodes = nodes.map((node) => ({
-    ...node,
-    status: node.metadata.status?.toLowerCase().trim() || "not started",
-  }));
-  const normalizedNodes2 = allNodesAtLevel
-    .filter((node) => {
-      return (
-        node.type == "todo" ||
-        `${urlPath == "/" ? "" : urlPath}/${node.name}/` == node.path
-      );
-    })
-    .map((node) => {
-      if (node.type === "todo") {
-        return {
-          ...node,
-          status: node.metadata.status?.toLowerCase().trim() || "not started",
-        };
-      } else {
-        return {
-          ...node,
-          status: "Folders", // or keep whatever you'd like for other types
-        };
+  const getTemplateFromUser = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("template")
+      .eq("user_id", userId);
+    if (error) {
+      console.error("Failed to fetch template", error);
+      return null;
+    }
+    return data && data.length > 0 ? data[0].template : null;
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      // Get realUser again here for template fetch
+      const params = new URLSearchParams(window.location.search);
+      const realUser = params.get("user");
+
+      if (realUser) {
+        const fetchedTemplate = await getTemplateFromUser(realUser);
+        if (fetchedTemplate) setTemplate(fetchedTemplate);
       }
-    });
+    };
 
-  const uniqueStatuses = Array.from(
-    new Set(normalizedNodes2.map((node) => node.status))
-  );
-
-  const nodesByStatus: Record<string, NodeType[]> = uniqueStatuses.reduce(
-    (acc, status) => {
-      acc[status] = normalizedNodes2.filter((node) => node.status === status);
-      return acc;
-    },
-    {} as Record<string, NodeType[]>
-  );
+    init();
+    // eslint-disable-next-line
+  }, [urlPath, urlUser]);
 
   useEffect(() => {
     if (peekNode) {
@@ -236,7 +234,8 @@ const FileSystemPage = () => {
     }
   }, [peekNode]);
 
-  const todo = false;
+  const view = "file";
+
   return (
     <div className="min-h-screen relative">
       <div className="w-full absolute m-6">
@@ -245,70 +244,22 @@ const FileSystemPage = () => {
         </h1>
 
         {/* Files/Folders List */}
-
-        {todo == false ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {nodes.map((node) => (
-              <NodeCard
-                key={node.id}
-                node={node}
-                urlPath={urlPath}
-                setUrlPath={setUrlPath}
-                onNodeUpdate={handleNodeUpdate}
-                selected={selected}
-                setSelected={setSelected}
-                peekNode={peekNode!}
-                setPeekNode={setPeekNode}
-              />
-            ))}
-          </div>
-        ) : (
-          <div
-            className={`grid grid-cols-1 md:grid-cols-${uniqueStatuses.length} gap-6`}
-          >
-            {uniqueStatuses.map((status) => (
-              <div key={status} className="bg-zinc-900 rounded p-4">
-                <h2 className="text-lg font-semibold mb-4 capitalize">
-                  {status}
-                </h2>
-                {nodesByStatus[status].length === 0 ? (
-                  <p className="text-gray-400">No items</p>
-                ) : (
-                  nodesByStatus[status].map((node) => (
-                    <TodoCard
-                      key={node.id}
-                      node={node}
-                      urlPath={urlPath}
-                      setUrlPath={setUrlPath}
-                      onNodeUpdate={handleNodeUpdate}
-                      selected={selected}
-                      setSelected={setSelected}
-                    />
-                  ))
-                )}
-              </div>
-            ))}
-          </div>
-
-          // <div className="grid grid-cols-3 gap-4">
-          //   <div className="">
-          //     <div className="text-center text-2xl">Not Started</div>
-          //   </div>
-          //   <div className="text-center">In Progress</div>
-          //   <div className="text-center">Done</div>
-          //   {nodes.map((node) => (
-          //     <TodoCard
-          //       key={node.id}
-          //       node={node}
-          //       urlPath={urlPath}
-          //       setUrlPath={setUrlPath}
-          //       onNodeUpdate={handleNodeUpdate}
-          //       selected={selected}
-          //       setSelected={setSelected}
-          //     ></TodoCard>
-          //   ))}
-          // </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {nodes.map((node) => (
+            <NodeCard
+              key={node.id}
+              node={node}
+              urlPath={urlPath}
+              setUrlPath={setUrlPath}
+              onNodeUpdate={handleNodeUpdate}
+              selected={selected}
+              setSelected={setSelected}
+              peekNode={peekNode!}
+              setPeekNode={setPeekNode}
+              view={view}
+            />
+          ))}
+        </div>
 
         {!loading && nodes.length === 0 && (
           <div className="text-center py-12">
@@ -318,6 +269,7 @@ const FileSystemPage = () => {
           </div>
         )}
       </div>
+
       {/* Floating Add Button */}
       <button
         onClick={() => setIsModalOpen(true)}
@@ -337,6 +289,7 @@ const FileSystemPage = () => {
           />
         </svg>
       </button>
+
       {/* Create Node Modal */}
       <CreateNodeModal
         isOpen={isModalOpen}
@@ -347,15 +300,15 @@ const FileSystemPage = () => {
         currentPath={urlPath}
         existingFolders={getAllFolderPaths(userSchema)}
       />
-      {isPeekOpen ? (
+
+      {isPeekOpen && peekNode && (
         <Peek
           isOpen={isPeekOpen}
           onClose={() => setIsPeekOpen(false)}
-          node={peekNode!}
+          node={peekNode}
           onNodeUpdate={handleNodeUpdate}
-        ></Peek>
-      ) : (
-        ""
+          template={template}
+        />
       )}
     </div>
   );

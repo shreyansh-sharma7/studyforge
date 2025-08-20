@@ -17,6 +17,7 @@ interface NodeCardProps {
   setSelected: React.Dispatch<React.SetStateAction<string[]>>;
   peekNode: NodeType;
   setPeekNode: React.Dispatch<React.SetStateAction<NodeType | undefined>>;
+  view: "file" | "todo";
 }
 
 const NodeCard: React.FC<NodeCardProps> = ({
@@ -28,6 +29,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
   setSelected,
   peekNode,
   setPeekNode,
+  view,
 }) => {
   // Consume shared menu context for open menu key and updater
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
@@ -83,49 +85,66 @@ const NodeCard: React.FC<NodeCardProps> = ({
   };
 
   return (
-    <div
-      key={node.id}
-      className={`hover:border nodecard relative flex flex-col items-center justify-center ${
-        selected.includes(node.id)
-          ? "bg-neutral-700 shadow-lg border"
-          : "bg-transparent shadow-md"
-      } hover:bg-neutral-800 rounded-lg p-4 hover:shadow-lg transition-shadow`}
-      style={{ width: 160, height: 160 }}
-      onDoubleClick={handleDoubleClick}
-      onClick={handleClick}
-    >
-      {/* Button to toggle context menu */}
-      <button
-        onClick={toggleMenu}
-        className="absolute top-2 right-2 p-1 rounded hover:bg-gray-700"
-        aria-label="Open menu"
-      >
-        <FiMoreVertical className="kebab-buttons text-gray-300" />
-      </button>
+    <div>
+      {view == "file" ? (
+        <div
+          key={node.id}
+          className={`hover:border nodecard relative flex flex-col items-center justify-center ${
+            selected.includes(node.id)
+              ? "bg-neutral-700 shadow-lg border"
+              : "bg-transparent shadow-md"
+          } hover:bg-neutral-800 rounded-lg p-4 hover:shadow-lg transition-shadow`}
+          style={{ width: 160, height: 160 }}
+          onDoubleClick={handleDoubleClick}
+          onClick={handleClick}
+        >
+          {/* Button to toggle context menu */}
+          <button
+            onClick={toggleMenu}
+            className="absolute top-2 right-2 p-1 rounded hover:bg-gray-700"
+            aria-label="Open menu"
+          >
+            <FiMoreVertical className="kebab-buttons text-gray-300" />
+          </button>
 
-      {/* Conditionally render context menu if this node's menu is open */}
-      {contextMenuKey === `node_${node.id}` && (
-        <ContextMenu key={`node_${node.id}`}>
-          <ContextItem
-            title="Delete"
-            onclick={async () => {
-              setContextMenuKey("");
-              await deleteNode(node);
-              onNodeUpdate(node.path, node.user_id!, true);
-            }}
-          ></ContextItem>
-        </ContextMenu>
+          {/* Conditionally render context menu if this node's menu is open */}
+          {contextMenuKey === `node_${node.id}` && (
+            <ContextMenu key={`node_${node.id}`}>
+              <ContextItem
+                title="Delete"
+                onclick={async () => {
+                  setContextMenuKey("");
+                  await deleteNode(node);
+                  onNodeUpdate(node.path, node.user_id!, true);
+                }}
+              ></ContextItem>
+            </ContextMenu>
+          )}
+
+          {/* Icon based on node type */}
+          <div className="text-9xl text-primary-400 pointer-events-none">
+            {node.type === "folder" ? <AiFillFolder /> : <AiFillFile />}
+          </div>
+
+          {/* Node name */}
+          <span className="-mt-1 text-sm break-words text-center text-gray-100 unselectable pointer-events-none">
+            {node.name}
+          </span>
+        </div>
+      ) : (
+        <div
+          key={node.id}
+          className={`hover:border-neutral-600 relative flex flex-col items-center justify-center border ${
+            selected.includes(node.id)
+              ? "bg-neutral-600 shadow-lg border-neutral-500"
+              : "bg-neutral-800 shadow-md border-transparent"
+          } hover:bg-neutral-700 rounded-lg p-2 my-2 hover:shadow-lg transition-shadow `}
+          onDoubleClick={handleDoubleClick}
+          onClick={(e) => handleClick(e)}
+        >
+          {node.name}
+        </div>
       )}
-
-      {/* Icon based on node type */}
-      <div className="text-9xl text-primary-400 pointer-events-none">
-        {node.type === "folder" ? <AiFillFolder /> : <AiFillFile />}
-      </div>
-
-      {/* Node name */}
-      <span className="-mt-1 text-sm break-words text-center text-gray-100 unselectable pointer-events-none">
-        {node.name}
-      </span>
     </div>
   );
 };

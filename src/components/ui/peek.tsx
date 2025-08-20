@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
-import { NodeType } from "../../../database.types";
+import { NodeType, Template } from "../../../database.types";
 import { colorClassMap, resolveTemplate } from "@/lib/utils";
 import { ContextMenu } from "./context-menu";
 import { ContextItem } from "./context-item";
@@ -16,31 +16,11 @@ type PeekProps = {
   node: NodeType; // The node object containing data to display
   onClose: () => void; // Callback function to close the panel
   onNodeUpdate: (path: string, userId: string, updateAll?: boolean) => void;
+  template: Template;
 };
 
-type Template = {
-  [key: string]: {
-    type: "single-select" | "path" | "date_created" | "text";
-    hidden: boolean;
-    data: Array<{ value?: string; color?: string }>;
-  };
-};
-
-const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
+const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
-  const [template, setTemplate] = useState<Template>({
-    path: { data: [{}], type: "path", hidden: false },
-    status: {
-      data: [
-        { color: "", value: "not started" },
-        { color: "", value: "in progress" },
-        { color: "", value: "done" },
-      ],
-      type: "single-select",
-      hidden: false,
-    },
-    "date created": { data: [{}], type: "date_created", hidden: false },
-  }); // State to store template data
 
   const [nodeTemplated, setNodeTemplated] = useState<{
     [key: string]: any;
