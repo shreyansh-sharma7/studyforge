@@ -41,3 +41,29 @@ for (const key in template) {
 }
   return nodeTemplated
 }
+
+//needed so tailwind renders "dynamic prop colors"
+export const colorClassMap = {
+  slate: "bg-slate-700/50",
+  gray: "bg-gray-700/50",
+  zinc: "bg-zinc-700/50",
+  neutral: "bg-neutral-700/50",
+  stone: "bg-stone-700/50",
+  red: "bg-red-700/50",
+  orange: "bg-orange-700/50",
+  amber: "bg-amber-700/50",
+  yellow: "bg-yellow-700/50",
+  lime: "bg-lime-700/50",
+  green: "bg-green-700/50",
+  emerald: "bg-emerald-700/50",
+  teal: "bg-teal-700/50",
+  cyan: "bg-cyan-700/50",
+  sky: "bg-sky-700/50",
+  blue: "bg-blue-700/50",
+  indigo: "bg-indigo-700/50",
+  violet: "bg-violet-700/50",
+  purple: "bg-purple-700/50",
+  fuchsia: "bg-fuchsia-700/50",
+  pink: "bg-pink-700/50",
+  rose: "bg-rose-700/50",
+};

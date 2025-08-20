@@ -3,7 +3,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { NodeType } from "../../../database.types";
-import { resolveTemplate } from "@/lib/utils";
+import { colorClassMap, resolveTemplate } from "@/lib/utils";
 import { ContextMenu } from "./context-menu";
 import { ContextItem } from "./context-item";
 import { MenuContext } from "@/lib/contexts";
@@ -22,20 +22,24 @@ type Template = {
   [key: string]: {
     type: "single-select" | "path" | "date_created" | "text";
     hidden: boolean;
-    values: string[];
+    data: Array<{ value?: string; color?: string }>;
   };
 };
 
 const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
   const [template, setTemplate] = useState<Template>({
-    path: { type: "path", hidden: false, values: [] },
+    path: { data: [{}], type: "path", hidden: false },
     status: {
+      data: [
+        { color: "", value: "not started" },
+        { color: "", value: "in progress" },
+        { color: "", value: "done" },
+      ],
       type: "single-select",
       hidden: false,
-      values: ["not started", "in progress", "done"],
     },
-    "date created": { type: "date_created", hidden: false, values: [] },
+    "date created": { data: [{}], type: "date_created", hidden: false },
   }); // State to store template data
 
   const [nodeTemplated, setNodeTemplated] = useState<{
@@ -173,13 +177,13 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
   const createProperty = async (
     name: string,
     type: "single-select" | "text",
-    values: any[]
+    data: Array<{ value?: string; color?: string }>
   ) => {
     console.log(template);
     if (template[name] != null) {
       console.warn("Property Already Exists");
     } else {
-      template[name] = { type, values, hidden: false };
+      template[name] = { type, data, hidden: false };
       await updateTemplate(template, node.user_id!);
       setNodeTemplated(resolveTemplate(template, node));
       setContextMenuKey(`prop_${node.id}_${name}`);
@@ -199,8 +203,10 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
     propertyName: string,
     propertyValue: any
   ) => {
-    if (!template[propertyName].values.includes(propertyValue))
-      template[propertyName].values.push(propertyValue);
+    if (
+      !template[propertyName].data.some((item) => item.value === propertyValue)
+    )
+      template[propertyName].data.push({ value: propertyValue, color: "" });
     else {
       console.warn("Value on this property already exists");
     }
@@ -247,11 +253,23 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
             {contextMenuKey != `prop_${node.id}_${propName}` && (
               <div
                 onClick={() => handlePropValueClick(propName)}
-                className="value min-w-56 hover:bg-neutral-700 rounded p-2"
+                className="value min-w-56 hover:bg-neutral-700 rounded p-2 "
               >
                 <div>
                   {nodeTemplated[propName] ? (
-                    nodeTemplated[propName]
+                    <span
+                      className={`rounded focus:outline-0 w-32 p-1 text-sm ${(() => {
+                        if (nodeTemplated[propName]) {
+                          const match = template[propName].data.find(
+                            (item) => item.value === nodeTemplated[propName]
+                          );
+                          if (match) return colorClassMap[match.color];
+                        }
+                        return "";
+                      })()}`}
+                    >
+                      {nodeTemplated[propName]}
+                    </span>
                   ) : (
                     <span className="text-gray-500">Empty</span>
                   )}
@@ -266,10 +284,15 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
               >
                 <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm ">
                   <span
-                    className={`rounded focus:outline-0 w-32 text-gray-400 p-1  text-sm  ${
-                      nodeTemplated[propName] &&
-                      "bg-cyan-700 font-bold text-white"
-                    }`}
+                    className={`rounded focus:outline-0 w-32 text-gray-400 p-1 text-sm ${(() => {
+                      if (nodeTemplated[propName]) {
+                        const match = template[propName].data.find(
+                          (item) => item.value === nodeTemplated[propName]
+                        );
+                        if (match) return colorClassMap[match.color];
+                      }
+                      return "";
+                    })()} font-bold text-white`}
                   >
                     {nodeTemplated[propName]
                       ? nodeTemplated[propName]
@@ -278,20 +301,23 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate }: PeekProps) => {
                 </div>
                 <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
                   <ContextMenu key={`prop_${node.id}_${propName}`}>
-                    {template[propName].values.map((value) => {
-                      return (
-                        <ContextItem
-                          key={`prop_${node.id}_${propName}_${value}`}
-                          title={value}
-                          onclick={(e) => {
-                            handlePropContextClick(propName, value, e!);
-                          }}
-                        ></ContextItem>
-                      );
-                    })}
+                    {template[propName].data
+                      .map((item) => [item.value, item.color])
+                      .map(([value, color]) => {
+                        return (
+                          <ContextItem
+                            key={`prop_${node.id}_${propName}_${value}`}
+                            title={value!}
+                            onclick={(e) => {
+                              handlePropContextClick(propName, value, e!);
+                            }}
+                            color={color}
+                          ></ContextItem>
+                        );
+                      })}
                     <ContextItem
                       key={`input_${node.id}_${propName}`}
-                      title="+ Add Property"
+                      title="+ Add Option"
                       type="input"
                       onclick={(value) => {
                         addPropertyValue(template, propName, value);

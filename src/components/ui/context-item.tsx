@@ -1,14 +1,17 @@
 import { MenuContext } from "@/lib/contexts";
+import { colorClassMap } from "@/lib/utils";
 import { useContext, useState } from "react";
 
 export const ContextItem = ({
   title,
   onclick,
   type,
+  color,
 }: {
   title: string;
   onclick: (...args: any[]) => void;
   type?: "input";
+  color?: string;
 }) => {
   const menuContext = useContext(MenuContext);
   const contextType = !type ? menuContext.contextMenuKey.split("_")[0] : type;
@@ -29,7 +32,9 @@ export const ContextItem = ({
           className="block w-full text-left px-3 py-2 text-xs hover:bg-zinc-500 rounded"
           onClick={onclick}
         >
-          <span className="bg-cyan-700 p-1 rounded font-bold">{title}</span>
+          <span className={`${colorClassMap[color]} p-1 rounded font-bold`}>
+            {title}
+          </span>
         </button>
       )}
 
