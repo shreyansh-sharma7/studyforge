@@ -12,14 +12,20 @@ import Input from "./input";
 import { MdSaveAs } from "react-icons/md";
 
 type PeekProps = {
-  isOpen: boolean; // Controls the visibility of the panel
+  peekState: "closed" | "create" | "display"; // Controls the visibility of the panel
   node: NodeType; // The node object containing data to display
   onClose: () => void; // Callback function to close the panel
   onNodeUpdate: (path: string, userId: string, updateAll?: boolean) => void;
   template: Template;
 };
 
-const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
+const Peek = ({
+  peekState,
+  onClose,
+  node,
+  onNodeUpdate,
+  template,
+}: PeekProps) => {
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
 
   const [nodeTemplated, setNodeTemplated] = useState<{
@@ -33,7 +39,7 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
   const [createPropertyName, setCreatePropertyName] = useState("");
 
   // Do not render the component if the panel should be hidden
-  if (!isOpen) return null;
+  const isClosed = peekState === "closed";
 
   useEffect(() => {
     const handleEscEnter = (event: KeyboardEvent) => {
@@ -75,7 +81,7 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
     const fetchTemplate = async () => {
       const templateData = await getTemplateFromUser(node.user_id!);
       if (templateData) {
-        setTemplate(templateData);
+        template = templateData;
       }
     };
     setNodeName(node.name);
@@ -111,6 +117,7 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
       setContextMenuKey("");
 
       updateNode(node);
+      onNodeUpdate(node.path, node.user_id!);
     }
   };
 
@@ -193,7 +200,7 @@ const Peek = ({ isOpen, onClose, node, onNodeUpdate, template }: PeekProps) => {
     updateTemplate(template);
   };
 
-  return (
+  return isClosed ? null : (
     <div className="fixed top-0 right-0 h-full w-2/5 bg-neutral-800 z-30 pl-8 pt-8 shadow-lg border-l-2 overflow-auto unselectable">
       {/* Close button */}
       <button

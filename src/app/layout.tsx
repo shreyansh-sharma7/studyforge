@@ -25,8 +25,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        data-theme="violet"
-        className={`antialiased min-h-screen overflow-y-hidden h-full dark`}
+        data-theme="slate"
+        className={`antialiased min-h-screen overflow-y-hidden h-full dark overflow-x-hidden`}
       >
         {children}
         {/* <LeftNav></LeftNav> */}

@@ -52,6 +52,7 @@ export const ContextItem = ({
           <input
             className="py-2 rounded font-bold outline-0 focus:text-white hover:placeholder:text-gray-300 w-full"
             placeholder={title}
+            autoFocus={true} //why not work.
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);

@@ -81,7 +81,13 @@ const FileSystemPage = () => {
   const [urlPath, setUrlPath] = useState<string>("/");
   const [selected, setSelected] = useState<string[]>([]);
   const [peekNode, setPeekNode] = useState<NodeType>();
-  const [isPeekOpen, setIsPeekOpen] = useState(false);
+  const [peekState, setPeekState] = useState<"closed" | "display" | "create">(
+    "closed"
+  );
+  const [statusList, setStatusList] = useState<string[]>([]);
+  const [nodesByStatus, setNodesByStatus] = useState<
+    Record<string, NodeType[]>
+  >({});
   const [template, setTemplate] = useState<Template>({
     path: { data: [{}], type: "path", hidden: false },
     status: {
@@ -230,36 +236,110 @@ const FileSystemPage = () => {
 
   useEffect(() => {
     if (peekNode) {
-      setIsPeekOpen(true);
+      setPeekState("display");
     }
   }, [peekNode]);
 
-  const view = "file";
+  const view: "file" | "todo" = "todo";
+
+  const divideBy = "status";
+
+  useEffect(() => {
+    setStatusList([]);
+    template[divideBy].data.map(({ value }) => {
+      setStatusList((prev) => [...prev, value!]);
+    });
+  }, [template]);
+
+  useEffect(() => {
+    console.log(nodes);
+    const tempNodes = statusList.reduce((acc, status) => {
+      acc[status] = nodes.filter((node) => node.metadata[divideBy] === status);
+      return acc;
+    }, {} as Record<string, NodeType[]>);
+
+    setNodesByStatus(tempNodes);
+  }, [statusList, template, nodes]);
+
+  console.log(nodesByStatus);
+  console.log(statusList);
 
   return (
-    <div className="min-h-screen relative">
-      <div className="w-full absolute m-6">
+    <div className="min-h-screen relative flex justify-center">
+      <div className="w-full absolute m-6 px-4">
         <h1 className="text-3xl font-bold text-gray-100 mb-6">
           <BreadCrumbs path={urlPath} onNavigate={handleBreadcrumbNavigate} />
         </h1>
 
         {/* Files/Folders List */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {nodes.map((node) => (
-            <NodeCard
-              key={node.id}
-              node={node}
-              urlPath={urlPath}
-              setUrlPath={setUrlPath}
-              onNodeUpdate={handleNodeUpdate}
-              selected={selected}
-              setSelected={setSelected}
-              peekNode={peekNode!}
-              setPeekNode={setPeekNode}
-              view={view}
-            />
-          ))}
-        </div>
+        {view == "file" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {nodes.map((node) => (
+              <NodeCard
+                key={node.id}
+                node={node}
+                urlPath={urlPath}
+                setUrlPath={setUrlPath}
+                onNodeUpdate={handleNodeUpdate}
+                selected={selected}
+                setSelected={setSelected}
+                peekNode={peekNode!}
+                setPeekNode={setPeekNode}
+                view={view}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className={`grid gap-3 px-4`}
+            style={{
+              gridTemplateColumns: `repeat(${statusList.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {statusList.map((status) => (
+              <div
+                key={status}
+                className="p-3 bg-neutral-800/50 rounded text-center"
+              >
+                <h1 className="text-xl mb-4">{status}</h1>
+                {nodesByStatus[status] ? (
+                  nodesByStatus[status].map((node) => {
+                    return (
+                      <NodeCard
+                        key={node.id}
+                        node={node}
+                        urlPath={urlPath}
+                        setUrlPath={setUrlPath}
+                        onNodeUpdate={handleNodeUpdate}
+                        selected={selected}
+                        setSelected={setSelected}
+                        peekNode={peekNode!}
+                        setPeekNode={setPeekNode}
+                        view={view}
+                      />
+                    );
+                  })
+                ) : (
+                  <div></div>
+                )}
+              </div>
+            ))}
+            {/* {nodes.map((node) => (
+              <NodeCard
+                key={node.id}
+                node={node}
+                urlPath={urlPath}
+                setUrlPath={setUrlPath}
+                onNodeUpdate={handleNodeUpdate}
+                selected={selected}
+                setSelected={setSelected}
+                peekNode={peekNode!}
+                setPeekNode={setPeekNode}
+                view={view}
+              />
+            ))} */}
+          </div>
+        )}
 
         {!loading && nodes.length === 0 && (
           <div className="text-center py-12">
@@ -272,7 +352,10 @@ const FileSystemPage = () => {
 
       {/* Floating Add Button */}
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => {
+          setPeekState("create");
+          setPeekNode(nodes[0]);
+        }}
         className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-20"
       >
         <svg
@@ -291,7 +374,7 @@ const FileSystemPage = () => {
       </button>
 
       {/* Create Node Modal */}
-      <CreateNodeModal
+      {/* <CreateNodeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onNodeCreated={handleNodeUpdate}
@@ -299,12 +382,12 @@ const FileSystemPage = () => {
         username={currentUsername}
         currentPath={urlPath}
         existingFolders={getAllFolderPaths(userSchema)}
-      />
+      /> */}
 
-      {isPeekOpen && peekNode && (
+      {peekNode && (
         <Peek
-          isOpen={isPeekOpen}
-          onClose={() => setIsPeekOpen(false)}
+          peekState={peekState}
+          onClose={() => setPeekState("closed")}
           node={peekNode}
           onNodeUpdate={handleNodeUpdate}
           template={template}
