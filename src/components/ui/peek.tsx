@@ -7,7 +7,7 @@ import { colorClassMap, resolveTemplate } from "@/lib/utils";
 import { ContextMenu } from "./context-menu";
 import { ContextItem } from "./context-item";
 import { MenuContext } from "@/lib/contexts";
-import { updateNode } from "@/lib/files/file-actions";
+import { deleteNode, updateNode } from "@/lib/files/file-actions";
 import Input from "./input";
 import { MdSaveAs } from "react-icons/md";
 
@@ -116,8 +116,9 @@ const Peek = ({
 
       setContextMenuKey("");
 
-      updateNode(node);
-      onNodeUpdate(node.path, node.user_id!);
+      updateNode(node).then(() => {
+        onNodeUpdate(node.path, node.user_id!);
+      });
     }
   };
 
@@ -161,7 +162,7 @@ const Peek = ({
   const handleEditSubmit = async () => {
     if ((await checkIfNodeExists()) == false) {
       await updateNode(node);
-      onNodeUpdate(node.path, node.user_id!, true);
+      onNodeUpdate(node.path, node.user_id!, true); //lil bug here doesnt work without update all
       setNodeTemplated(resolveTemplate(template, node));
     }
   };
@@ -182,8 +183,9 @@ const Peek = ({
         .insert([nodeCopy]);
       if (insertError) throw insertError;
 
-      onNodeUpdate(node.path, node.user_id!, true);
+      onNodeUpdate(node.path, node.user_id!);
       setNodeTemplated(resolveTemplate(template, node));
+      onClose();
     }
   };
 
@@ -393,6 +395,21 @@ const Peek = ({
             </div>
           )}
         </div>
+        {peekState == "display" && (
+          <div className="property flex gap-4 text-sm items-center">
+            <div
+              onClick={() => {
+                deleteNode(node).then(() =>
+                  onNodeUpdate(node.path, node.user_id!, true)
+                );
+                // setContextMenuKey(`createprop_${node.id}`);
+              }}
+              className="key w-36 hover:bg-red-400/20 rounded p-2 text-red-500/60 hover:text-red-500"
+            >
+              Delete
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
