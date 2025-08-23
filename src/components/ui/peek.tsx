@@ -123,20 +123,20 @@ const Peek = ({
 
   useEffect(() => {
     node.name = nodeName;
+    console.log(node.path);
     const parentPath = `/${node.path
       .replace(/^\/|\/$/g, "")
       .split("/")
       .slice(0, -1)
       .join("/")}/`;
-    // console.log(parentPath);
     node.path = parentPath + nodeName + "/";
 
     // updateNode(node);
   }, [nodeName]);
 
-  const handleEditSubmit = async () => {
+  const checkIfNodeExists = async () => {
     // copied from files page.tsx cause im lazy to refactor it
-    //check if renameds path doesnt already exist
+    //check if renamed path doesnt already exist
     const getNodeFromPath = async (path: string, userId = node.user_id) => {
       const { data, error } = await supabase
         .from("nodes")
@@ -144,7 +144,6 @@ const Peek = ({
         .eq("path", path);
       return error ? [] : data;
     };
-    console.log(node.path);
     const nodeAtPath = await getNodeFromPath(node.path, node.user_id);
 
     if (nodeAtPath.length > 0) {
@@ -152,13 +151,40 @@ const Peek = ({
       if (nodeAtPath[0].id != node.id) {
         //means we are trying to create a new node with the same path (not allowed)
         console.log("bad boy trying to create same bad bad");
-        return;
+        return true;
       }
     }
+    //does not exist
+    return false;
+  };
 
-    await updateNode(node);
-    onNodeUpdate(node.path, node.user_id!, true);
-    setNodeTemplated(resolveTemplate(template, node));
+  const handleEditSubmit = async () => {
+    if ((await checkIfNodeExists()) == false) {
+      await updateNode(node);
+      onNodeUpdate(node.path, node.user_id!, true);
+      setNodeTemplated(resolveTemplate(template, node));
+    }
+  };
+
+  const handleCreateSubmit = async () => {
+    console.log(node);
+    if ((await checkIfNodeExists()) == false) {
+      //done: user_id, name, metadata
+      //left: type, path, dont allow submit for edge cases
+      //for now lets only have todo type
+
+      node.type = "todo";
+      const nodeCopy: Partial<NodeType> = node;
+      delete nodeCopy["id"];
+
+      const { error: insertError } = await supabase
+        .from("nodes")
+        .insert([nodeCopy]);
+      if (insertError) throw insertError;
+
+      onNodeUpdate(node.path, node.user_id!, true);
+      setNodeTemplated(resolveTemplate(template, node));
+    }
   };
 
   const createProperty = async (
@@ -166,7 +192,6 @@ const Peek = ({
     type: "single-select" | "text",
     data: Array<{ value?: string; color?: string }>
   ) => {
-    console.log(template);
     if (template[name] != null) {
       console.warn("Property Already Exists");
     } else {
@@ -213,7 +238,9 @@ const Peek = ({
 
       {showSave && (
         <button
-          onClick={handleEditSubmit}
+          onClick={
+            peekState == "create" ? handleCreateSubmit : handleEditSubmit
+          }
           className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-40 text-2xl"
         >
           <MdSaveAs />
@@ -230,94 +257,98 @@ const Peek = ({
       {/* Key properties of the node */}
       <div className="propertiescont space-y-1">
         {Object.keys(nodeTemplated).map((propName) => (
-          <div
-            key={`prop_${node.id}_${propName}`}
-            className="property flex gap-4 text-sm items-center"
-          >
-            <div className="key w-36 hover:bg-neutral-700 rounded p-2">
-              {propName}
-            </div>
-            {contextMenuKey != `prop_${node.id}_${propName}` && (
+          <div>
+            {!template[propName].hidden && (
               <div
-                onClick={() => handlePropValueClick(propName)}
-                className="value min-w-56 hover:bg-neutral-700 rounded p-2 "
+                key={`prop_${node.id}_${propName}`}
+                className="property flex gap-4 text-sm items-center"
               >
-                <div>
-                  {nodeTemplated[propName] ? (
-                    <span
-                      className={`rounded focus:outline-0 w-32 p-1 text-sm ${(() => {
-                        if (nodeTemplated[propName]) {
-                          const match = template[propName].data.find(
-                            (item) => item.value === nodeTemplated[propName]
-                          );
-                          if (match && match.color !== undefined)
-                            return colorClassMap[
-                              match.color as keyof typeof colorClassMap
-                            ];
-                        }
-                        return "";
-                      })()}`}
-                    >
-                      {nodeTemplated[propName]}
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">Empty</span>
-                  )}
+                <div className="key w-36 hover:bg-neutral-700 rounded p-2">
+                  {propName}
                 </div>
-              </div>
-            )}
-
-            {contextMenuKey == `prop_${node.id}_${propName}` && (
-              <div
-                onClick={() => handlePropValueClick(propName)}
-                className="value min-w-56 rounded"
-              >
-                <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm ">
-                  <span
-                    className={`rounded focus:outline-0 w-32 text-gray-400 p-1 text-sm ${(() => {
-                      if (nodeTemplated[propName]) {
-                        const match = template[propName].data.find(
-                          (item) => item.value === nodeTemplated[propName]
-                        );
-                        if (match && match.color !== undefined)
-                          return colorClassMap[
-                            match.color as keyof typeof colorClassMap
-                          ];
-                      }
-                      return "";
-                    })()} font-bold text-white`}
+                {contextMenuKey != `prop_${node.id}_${propName}` && (
+                  <div
+                    onClick={() => handlePropValueClick(propName)}
+                    className="value min-w-56 hover:bg-neutral-700 rounded p-2 "
                   >
-                    {nodeTemplated[propName]
-                      ? nodeTemplated[propName]
-                      : "Empty"}
-                  </span>
-                </div>
-                <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
-                  <ContextMenu key={`prop_${node.id}_${propName}`}>
-                    {template[propName].data
-                      .map((item) => [item.value, item.color])
-                      .map(([value, color]) => {
-                        return (
-                          <ContextItem
-                            key={`prop_${node.id}_${propName}_${value}`}
-                            title={value!}
-                            onclick={(e) => {
-                              handlePropContextClick(propName, value, e!);
-                            }}
-                            color={color}
-                          ></ContextItem>
-                        );
-                      })}
-                    <ContextItem
-                      key={`input_${node.id}_${propName}`}
-                      title="+ Add Option"
-                      type="input"
-                      onclick={(value) => {
-                        addPropertyValue(template, propName, value);
-                      }}
-                    ></ContextItem>
-                  </ContextMenu>
-                </div>
+                    <div>
+                      {nodeTemplated[propName] ? (
+                        <span
+                          className={`rounded focus:outline-0 w-32 p-1 text-sm ${(() => {
+                            if (nodeTemplated[propName]) {
+                              const match = template[propName].data.find(
+                                (item) => item.value === nodeTemplated[propName]
+                              );
+                              if (match && match.color !== undefined)
+                                return colorClassMap[
+                                  match.color as keyof typeof colorClassMap
+                                ];
+                            }
+                            return "";
+                          })()}`}
+                        >
+                          {nodeTemplated[propName]}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Empty</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {contextMenuKey == `prop_${node.id}_${propName}` && (
+                  <div
+                    onClick={() => handlePropValueClick(propName)}
+                    className="value min-w-56 rounded"
+                  >
+                    <div className="bg-zinc-600 border-b-1 border-zinc-500 p-2 rounded-t text-sm ">
+                      <span
+                        className={`rounded focus:outline-0 w-32 text-gray-400 p-1 text-sm ${(() => {
+                          if (nodeTemplated[propName]) {
+                            const match = template[propName].data.find(
+                              (item) => item.value === nodeTemplated[propName]
+                            );
+                            if (match && match.color !== undefined)
+                              return colorClassMap[
+                                match.color as keyof typeof colorClassMap
+                              ];
+                          }
+                          return "";
+                        })()} font-bold text-white`}
+                      >
+                        {nodeTemplated[propName]
+                          ? nodeTemplated[propName]
+                          : "Empty"}
+                      </span>
+                    </div>
+                    <div className="p-1 absolute bg-zinc-700 min-w-56 rounded-b">
+                      <ContextMenu key={`prop_${node.id}_${propName}`}>
+                        {template[propName].data
+                          .map((item) => [item.value, item.color])
+                          .map(([value, color]) => {
+                            return (
+                              <ContextItem
+                                key={`prop_${node.id}_${propName}_${value}`}
+                                title={value!}
+                                onclick={(e) => {
+                                  handlePropContextClick(propName, value, e!);
+                                }}
+                                color={color}
+                              ></ContextItem>
+                            );
+                          })}
+                        <ContextItem
+                          key={`input_${node.id}_${propName}`}
+                          title="+ Add Option"
+                          type="input"
+                          onclick={(value) => {
+                            addPropertyValue(template, propName, value);
+                          }}
+                        ></ContextItem>
+                      </ContextMenu>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

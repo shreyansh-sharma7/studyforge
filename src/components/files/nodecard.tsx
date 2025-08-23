@@ -142,7 +142,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
           onDoubleClick={handleDoubleClick}
           onClick={(e) => handleClick(e)}
         >
-          {node.name}
+          <span className="unselectable">{node.name}</span>
         </div>
       )}
     </div>

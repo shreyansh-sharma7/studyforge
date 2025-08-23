@@ -236,7 +236,7 @@ const FileSystemPage = () => {
   }, [urlPath, urlUser]);
 
   useEffect(() => {
-    if (peekNode) {
+    if (peekNode && peekNode.id != "createnode") {
       setPeekState("display");
     }
   }, [peekNode]);
@@ -253,7 +253,6 @@ const FileSystemPage = () => {
   }, [template]);
 
   useEffect(() => {
-    console.log(nodes);
     const tempNodes = statusList.reduce((acc, status) => {
       acc[status] = nodes.filter((node) => node.metadata[divideBy] === status);
       return acc;
@@ -261,9 +260,6 @@ const FileSystemPage = () => {
 
     setNodesByStatus(tempNodes);
   }, [statusList, template, nodes]);
-
-  console.log(nodesByStatus);
-  console.log(statusList);
 
   const defaultNode = () => {
     //name, type of node, if todo then from template get all the user editable tags
@@ -359,7 +355,18 @@ const FileSystemPage = () => {
       <button
         onClick={() => {
           setPeekState("create");
-          setPeekNode(nodes[0]);
+          setPeekNode({
+            user_id: currentUserId,
+            name: "Empty",
+            metadata: {},
+            type: "todo",
+            path: urlPath + "/Empty/",
+            created_at: new Date().toISOString(),
+            parent_id: null,
+            username: null,
+            id: "createnode",
+          });
+          //user_id, name, type, path, metadata
         }}
         className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-colors z-20"
       >
@@ -395,6 +402,7 @@ const FileSystemPage = () => {
           onClose={() => setPeekState("closed")}
           node={peekNode}
           onNodeUpdate={handleNodeUpdate}
+          // onNodeCreate={handleNodeCreate}
           template={template}
         />
       )}

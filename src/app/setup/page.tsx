@@ -15,7 +15,6 @@ const SetupPage = () => {
     const { data, error } = await supabase.auth.getUser();
     if (!error) {
       setUser(data.user);
-      console.log(data.user);
     } else console.warn(error);
     return data;
   };
