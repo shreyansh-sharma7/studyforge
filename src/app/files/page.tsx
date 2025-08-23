@@ -168,14 +168,14 @@ const FileSystemPage = () => {
       setUrlPath(realPath);
 
       const data = await getNodesFromPath("/", realUser);
-      setAllNodes(data);
-      const schema = buildUserSchema(data || []);
+      setAllNodes(Array.isArray(data) ? data : []);
+      const schema = buildUserSchema(Array.isArray(data) ? data : []);
       setUserSchema(schema);
 
       const folderObj = getSchemaAtPath(schema, realPath);
       setNodes(getNodesAtLevel(folderObj));
       const allNodesAtPath = await getNodesFromPath(realPath, realUser);
-      setAllNodesAtLevel(allNodesAtPath);
+      setAllNodesAtLevel(Array.isArray(allNodesAtPath) ? allNodesAtPath : []);
       setLoading(false);
     };
 
@@ -190,9 +190,10 @@ const FileSystemPage = () => {
     updateAll = false
   ) => {
     setLoading(true);
-    const nodeList: NodeType[] = !updateAll
+    const nodeData = !updateAll
       ? await getNodeFromPath(path, userId)
       : await getNodesFromPath(urlPath, urlUser);
+    const nodeList: NodeType[] = Array.isArray(nodeData) ? nodeData : [];
 
     const schemaUpdated = buildUserSchema(
       nodeList,
@@ -240,7 +241,7 @@ const FileSystemPage = () => {
     }
   }, [peekNode]);
 
-  const view: "file" | "todo" = "todo";
+  let view: "file" | "todo" = "todo";
 
   const divideBy = "status";
 
@@ -264,6 +265,10 @@ const FileSystemPage = () => {
   console.log(nodesByStatus);
   console.log(statusList);
 
+  const defaultNode = () => {
+    //name, type of node, if todo then from template get all the user editable tags
+  };
+
   return (
     <div className="min-h-screen relative flex justify-center">
       <div className="w-full absolute m-6 px-4">
@@ -272,7 +277,7 @@ const FileSystemPage = () => {
         </h1>
 
         {/* Files/Folders List */}
-        {view == "file" ? (
+        {view != "todo" ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {nodes.map((node) => (
               <NodeCard

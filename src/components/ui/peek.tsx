@@ -250,7 +250,10 @@ const Peek = ({
                           const match = template[propName].data.find(
                             (item) => item.value === nodeTemplated[propName]
                           );
-                          if (match) return colorClassMap[match.color];
+                          if (match && match.color !== undefined)
+                            return colorClassMap[
+                              match.color as keyof typeof colorClassMap
+                            ];
                         }
                         return "";
                       })()}`}
@@ -276,7 +279,10 @@ const Peek = ({
                         const match = template[propName].data.find(
                           (item) => item.value === nodeTemplated[propName]
                         );
-                        if (match) return colorClassMap[match.color];
+                        if (match && match.color !== undefined)
+                          return colorClassMap[
+                            match.color as keyof typeof colorClassMap
+                          ];
                       }
                       return "";
                     })()} font-bold text-white`}

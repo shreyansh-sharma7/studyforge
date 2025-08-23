@@ -32,7 +32,11 @@ export const ContextItem = ({
           className="block w-full text-left px-3 py-2 text-xs hover:bg-zinc-500 rounded"
           onClick={onclick}
         >
-          <span className={`${colorClassMap[color]} p-1 rounded font-bold`}>
+          <span
+            className={`${
+              colorClassMap[color! as keyof typeof colorClassMap]
+            } p-1 rounded font-bold`}
+          >
             {title}
           </span>
         </button>

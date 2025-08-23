@@ -54,7 +54,7 @@ const TodoCard: React.FC<NodeCardProps> = ({
     }
   };
 
-  const handleClick = (e) => {
+  const handleClick = (e: React.MouseEvent) => {
     const isMultiSelect = e.ctrlKey || e.metaKey;
     setSelected((prev) => {
       if (isMultiSelect) {
