@@ -87,7 +87,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
   };
 
   return (
-    <div>
+    <div className="cursor-pointer">
       {view == "file" ? (
         <div
           key={node.id}
@@ -141,8 +141,8 @@ const NodeCard: React.FC<NodeCardProps> = ({
               ? "bg-neutral-600 shadow-lg border-neutral-500"
               : "bg-neutral-800 shadow-md border-transparent"
           } hover:bg-neutral-700 rounded-lg p-2 my-2 hover:shadow-lg transition-shadow `}
-          onDoubleClick={handleDoubleClick}
-          onClick={(e) => handleClick(e)}
+          onClick={handleDoubleClick}
+          // onClick={(e) => handleClick(e)}
         >
           <span className="unselectable">{node.name}</span>
         </div>
