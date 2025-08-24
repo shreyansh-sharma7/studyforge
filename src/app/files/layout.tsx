@@ -1,6 +1,6 @@
-"use client"; //for now but maybe use server here later and do a workaroud for context
+"use client";
 import { ColorContext, MenuContext } from "@/lib/contexts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function FilesLayout({
   children,
@@ -8,10 +8,15 @@ export default function FilesLayout({
   children: React.ReactNode;
 }>) {
   const [contextMenuKey, setContextMenuKey] = useState("");
-  const color = localStorage.getItem("color")
-    ? localStorage.getItem("color")
-    : "slate";
-  const [colorTheme, setColorTheme] = useState(color);
+  const [colorTheme, setColorTheme] = useState<string>("slate"); // Always string
+
+  // Only runs on the client
+  useEffect(() => {
+    const color = localStorage.getItem("color");
+    if (color) {
+      setColorTheme(color);
+    }
+  }, []);
 
   return (
     <ColorContext.Provider value={{ colorTheme, setColorTheme }}>
