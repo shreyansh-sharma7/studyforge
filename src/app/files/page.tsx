@@ -236,7 +236,7 @@ const FileSystemPage = () => {
   }, [urlPath, urlUser]);
 
   useEffect(() => {
-    if (peekNode && peekNode.id != "createnode") {
+    if (peekNode && peekNode != "closed" && peekNode.id != "createnode") {
       setPeekState("display");
     }
   }, [peekNode]);

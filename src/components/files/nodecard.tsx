@@ -15,8 +15,10 @@ interface NodeCardProps {
   onNodeUpdate: (path: string, userId: string, del?: boolean) => {};
   selected: string[];
   setSelected: React.Dispatch<React.SetStateAction<string[]>>;
-  peekNode: NodeType;
-  setPeekNode: React.Dispatch<React.SetStateAction<NodeType | undefined>>;
+  peekNode: NodeType | "closed";
+  setPeekNode: React.Dispatch<
+    React.SetStateAction<NodeType | "closed" | undefined>
+  >;
   view: "file" | "todo";
 }
 
