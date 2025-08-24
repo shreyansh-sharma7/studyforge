@@ -13,7 +13,7 @@ import { MdSaveAs } from "react-icons/md";
 
 type PeekProps = {
   peekState: "closed" | "create" | "display"; // Controls the visibility of the panel
-  node: NodeType; // The node object containing data to display
+  node: NodeType | "closed"; // The node object containing data to display
   onClose: () => void; // Callback function to close the panel
   onNodeUpdate: (path: string, userId: string, updateAll?: boolean) => void;
   template: Template;
@@ -26,6 +26,9 @@ const Peek = ({
   onNodeUpdate,
   template,
 }: PeekProps) => {
+  const isClosed = peekState === "closed" || node === "closed";
+  if (isClosed) return;
+
   const { contextMenuKey, setContextMenuKey } = useContext(MenuContext);
 
   const [nodeTemplated, setNodeTemplated] = useState<{
@@ -39,7 +42,6 @@ const Peek = ({
   const [createPropertyName, setCreatePropertyName] = useState("");
 
   // Do not render the component if the panel should be hidden
-  const isClosed = peekState === "closed";
 
   useEffect(() => {
     const handleEscEnter = (event: KeyboardEvent) => {
@@ -124,13 +126,14 @@ const Peek = ({
 
   useEffect(() => {
     node.name = nodeName;
-    console.log(node.path);
     const parentPath = `/${node.path
       .replace(/^\/|\/$/g, "")
       .split("/")
       .slice(0, -1)
       .join("/")}/`;
-    node.path = parentPath + nodeName + "/";
+    node.path =
+      parentPath == "//" ? "/" + nodeName + "/" : parentPath + nodeName + "/";
+    console.log(node.path);
 
     // updateNode(node);
   }, [nodeName]);
@@ -151,7 +154,6 @@ const Peek = ({
       //means there is a node with the same path
       if (nodeAtPath[0].id != node.id) {
         //means we are trying to create a new node with the same path (not allowed)
-        console.log("bad boy trying to create same bad bad");
         return true;
       }
     }
@@ -168,7 +170,6 @@ const Peek = ({
   };
 
   const handleCreateSubmit = async () => {
-    console.log(node);
     if ((await checkIfNodeExists()) == false) {
       //done: user_id, name, metadata
       //left: type, path, dont allow submit for edge cases
@@ -253,13 +254,14 @@ const Peek = ({
       <input
         className="text-font-primary text-5xl font-medium mb-6 focus:outline-0 focus"
         value={nodeName}
+        placeholder="Empty"
         onChange={(e) => setNodeName(e.target.value)}
       />
 
       {/* Key properties of the node */}
       <div className="propertiescont space-y-1">
         {Object.keys(nodeTemplated).map((propName) => (
-          <div>
+          <div key={`prop_${node.id}_${propName}_cont`}>
             {!template[propName].hidden && (
               <div
                 key={`prop_${node.id}_${propName}`}
@@ -402,6 +404,7 @@ const Peek = ({
                 deleteNode(node).then(() =>
                   onNodeUpdate(node.path, node.user_id!, true)
                 );
+                onClose();
                 // setContextMenuKey(`createprop_${node.id}`);
               }}
               className="key w-36 hover:bg-red-400/20 rounded p-2 text-red-500/60 hover:text-red-500"

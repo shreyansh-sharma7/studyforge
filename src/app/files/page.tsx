@@ -80,7 +80,7 @@ const FileSystemPage = () => {
   const [urlUser, setUrlUser] = useState<string>("");
   const [urlPath, setUrlPath] = useState<string>("/");
   const [selected, setSelected] = useState<string[]>([]);
-  const [peekNode, setPeekNode] = useState<NodeType>();
+  const [peekNode, setPeekNode] = useState<NodeType | "closed">();
   const [peekState, setPeekState] = useState<"closed" | "display" | "create">(
     "closed"
   );
@@ -345,7 +345,7 @@ const FileSystemPage = () => {
         {!loading && nodes.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">
-              No files or folders yet. Create your first one!
+              {/* No files or folders yet. Create your first one! */}
             </p>
           </div>
         )}
@@ -357,10 +357,10 @@ const FileSystemPage = () => {
           setPeekState("create");
           setPeekNode({
             user_id: currentUserId,
-            name: "Empty",
+            name: "",
             metadata: {},
             type: "todo",
-            path: urlPath + "/Empty/",
+            path: urlPath == "/" ? "" : "/" + "Empty/",
             created_at: new Date().toISOString(),
             parent_id: null,
             username: null,
@@ -399,7 +399,10 @@ const FileSystemPage = () => {
       {peekNode && (
         <Peek
           peekState={peekState}
-          onClose={() => setPeekState("closed")}
+          onClose={() => {
+            setPeekState("closed");
+            setPeekNode("closed");
+          }}
           node={peekNode}
           onNodeUpdate={handleNodeUpdate}
           // onNodeCreate={handleNodeCreate}
