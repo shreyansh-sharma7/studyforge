@@ -89,7 +89,7 @@ const SetupPage = () => {
   return (
     <div className="antialiased min-h-screen overflow-y-hidden h-full dark overflow-x-hidden">
       <div className="flex items-center justify-center min-h-screen w-full flex-col">
-        <div>click on the button to cycle through colors (doesnt work rn) </div>
+        <div>click on the button to cycle through colors</div>
         <button
           onClick={() => {
             // setClicked(clicked * 2);
